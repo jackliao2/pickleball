@@ -83,6 +83,17 @@ function roundRect(ctx, x, y, w, h, r) {
   ctx.closePath();
 }
 
+function shadeHex(hex, amt) {
+  let n = String(hex || "#888").replace("#", "");
+  if (n.length === 3) n = n.split("").map((c) => c + c).join("");
+  const v = parseInt(n, 16);
+  if (!Number.isFinite(v)) return hex;
+  const r = clamp(((v >> 16) & 255) * amt, 0, 255) | 0;
+  const g = clamp(((v >> 8) & 255) * amt, 0, 255) | 0;
+  const b = clamp((v & 255) * amt, 0, 255) | 0;
+  return `rgb(${r},${g},${b})`;
+}
+
 function netHeightAt(x) {
   const t = Math.abs(x - 10) / 10;
   return lerp(NET_HC, NET_HS, t);
@@ -2459,19 +2470,57 @@ export class Game {
     ctx.save();
     ctx.translate(ax + hand * 6 * s, ay - 6 * s);
     ctx.rotate(hand * (0.7 + backswing * 1.45 - fwd * 2.15));
-    ctx.fillStyle = "#222";
-    roundRect(ctx, -2.2 * s, 8 * s, 4.4 * s, 11 * s, 1.4 * s);
-    ctx.fill();
-    ctx.fillStyle = p.paddle;
-    ctx.beginPath();
-    ctx.ellipse(0, -2 * s, 12 * s, 15.5 * s, 0, 0, TAU);
-    ctx.fill();
-    ctx.strokeStyle = "rgba(255,255,255,0.5)";
-    ctx.lineWidth = 1.4 * s;
-    ctx.stroke();
+    this.drawPaddle(ctx, p, s);
     ctx.restore();
 
     ctx.restore();
+  }
+
+  drawPaddle(ctx, p, s) {
+    const fw = 12.6 * s;
+    const fh = 16.4 * s;
+    const cr = 3.5 * s;
+    const edge = 1.25 * s;
+    const hw = 3.5 * s;
+    const hh = 9.6 * s;
+    const faceTop = -fh * 0.58;
+
+    ctx.fillStyle = "#1c1612";
+    roundRect(ctx, -hw / 2, faceTop + fh - 1.4 * s, hw, hh, 1.15 * s);
+    ctx.fill();
+    ctx.strokeStyle = "rgba(0,0,0,0.4)";
+    ctx.lineWidth = Math.max(0.6, 0.65 * s);
+    for (let i = 0; i < 6; i++) {
+      const gy = faceTop + fh + 0.6 * s + i * 1.15 * s;
+      ctx.beginPath();
+      ctx.moveTo(-hw / 2 + 0.45 * s, gy);
+      ctx.lineTo(hw / 2 - 0.45 * s, gy);
+      ctx.stroke();
+    }
+    ctx.fillStyle = "#0d0d0d";
+    roundRect(ctx, -hw / 2 - 0.45 * s, faceTop + fh + hh - 2.3 * s, hw + 0.9 * s, 2.15 * s, 0.7 * s);
+    ctx.fill();
+
+    ctx.fillStyle = "#161616";
+    roundRect(ctx, -fw / 2, faceTop, fw, fh, cr);
+    ctx.fill();
+
+    const g = ctx.createLinearGradient(-fw / 2, faceTop, fw / 2, faceTop + fh);
+    g.addColorStop(0, shadeHex(p.paddle, 1.22));
+    g.addColorStop(0.42, p.paddle);
+    g.addColorStop(1, shadeHex(p.paddle, 0.68));
+    ctx.fillStyle = g;
+    roundRect(ctx, -fw / 2 + edge, faceTop + edge, fw - edge * 2, fh - edge * 2, Math.max(1.2 * s, cr - edge));
+    ctx.fill();
+
+    ctx.strokeStyle = "rgba(255,255,255,0.2)";
+    ctx.lineWidth = Math.max(0.6, 0.7 * s);
+    roundRect(ctx, -fw * 0.26, faceTop + fh * 0.18, fw * 0.52, fh * 0.48, 2.1 * s);
+    ctx.stroke();
+
+    ctx.fillStyle = "rgba(255,255,255,0.14)";
+    roundRect(ctx, -fw / 2 + edge * 1.8, faceTop + edge * 1.4, fw * 0.2, fh * 0.7, 1.6 * s);
+    ctx.fill();
   }
 
   drawCharge(ctx, p) {
