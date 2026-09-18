@@ -536,7 +536,7 @@ export class Game {
     const receiver = p.side === "near" ? "far" : "near";
     const tx = even ? (receiver === "far" ? 5 : 15) : receiver === "far" ? 15 : 5;
     const ty = receiver === "far" ? rand(32.5, 41) : rand(3, 11.5);
-    const t = lerp(0.95, 0.62, power);
+    const t = lerp(1.05, 0.82, power);
     this.ball.held = false;
     this.ball.live = true;
     this.ball.x = p.x + 0.4;
@@ -599,29 +599,28 @@ export class Game {
 
     if (lob) {
       ty = p.side === "near" ? rand(38, 43) : rand(1.2, 6);
-      flight = lerp(1.15, 1.45, power);
+      flight = lerp(1.2, 1.5, power);
     } else if (b.z > 5.2 && Math.abs(p.y - NET_Y) < 10) {
       ty = p.side === "near" ? opp.y - 1.4 : opp.y + 1.4;
       tx = clamp(opp.x + (Math.random() - 0.5) * 2, 1, 19);
-      flight = 0.38;
+      flight = 0.55;
       this.shake = 7;
     } else if (power < 0.28 || atKitchen || thirdShot) {
-      ty = p.side === "near" ? rand(23.4, 28.2) : rand(15.8, 20.6);
-      flight = lerp(0.72, 0.95, 1 - power);
+      ty = p.side === "near" ? rand(26.4, 28.6) : rand(15.4, 17.6);
+      flight = lerp(1.05, 1.28, 1 - power);
     } else if (atBase && power < 0.55) {
-      ty = p.side === "near" ? rand(23.6, 28) : rand(16, 20.4);
-      flight = 0.95;
+      ty = p.side === "near" ? rand(26.2, 28.4) : rand(15.6, 17.8);
+      flight = 1.15;
     } else {
-      ty = p.side === "near" ? rand(36, 42.5) : rand(1.6, 8);
-      flight = lerp(0.72, 0.48, power);
+      ty = p.side === "near" ? rand(34, 41.5) : rand(2.8, 10);
+      flight = lerp(0.92, 0.7, power);
     }
 
-    let noise = (p === this.far && this.mode === "cpu" ? DIFF[this.diff].err : 0.55) * (0.4 + d * 0.15);
+    let noise = (p === this.far && this.mode === "cpu" ? DIFF[this.diff].err : 0.45) * (0.25 + d * 0.08);
     if (p === this.far && this.mode === "cpu") {
-      tx = clamp(tx, 3.2, 16.8);
-      if (p.side === "far") ty = clamp(ty, 1.8, 20.2);
-      else ty = clamp(ty, 23.8, 42.2);
-      noise *= 0.4;
+      tx = clamp(tx, 3.4, 16.6);
+      ty = p.side === "far" ? clamp(ty, 2.4, 17.2) : clamp(ty, 26.8, 41.6);
+      noise *= 0.35;
     }
     this.launchTo(b, tx, ty, flight, noise);
     b.lastHit = p.side;
@@ -636,12 +635,41 @@ export class Game {
     }
   }
 
+  heightAtNet(y, z, vy, vz) {
+    if (Math.abs(vy) < 0.08) return 99;
+    const tNet = (NET_Y - y) / vy;
+    if (tNet <= 0.02) return 99;
+    return z + vz * tNet - 0.5 * G * tNet * tNet;
+  }
+
   launchTo(b, tx, ty, t, noise) {
-    t = clamp(t, 0.34, 1.6);
-    b.vx = (tx - b.x) / t + rand(-noise, noise);
-    b.vy = (ty - b.y) / t + rand(-noise, noise) * 0.35;
-    b.vz = 0.5 * G * t - b.z / t;
-    b.z = Math.max(b.z, 0.35);
+    tx = clamp(tx + rand(-noise, noise), 1.4, 18.6);
+    ty = ty + rand(-noise, noise) * 0.4;
+    if (ty >= NET_Y) ty = clamp(ty, NET_Y + 4.4, 42.6);
+    else ty = clamp(ty, 1.4, NET_Y - 4.4);
+
+    const z0 = Math.max(b.z, 0.95);
+    t = clamp(t, 0.55, 1.85);
+    const need = 3.35;
+    let vx = 0,
+      vy = 0,
+      vz = 0;
+    for (let i = 0; i < 12; i++) {
+      vx = (tx - b.x) / t;
+      vy = (ty - b.y) / t;
+      vz = 0.5 * G * t - z0 / t;
+      if (this.heightAtNet(b.y, z0, vy, vz) >= need) break;
+      t = Math.min(1.85, t + 0.12);
+    }
+    const zNet = this.heightAtNet(b.y, z0, vy, vz);
+    if (zNet < need && Math.abs(vy) > 0.08) {
+      const tNet = (NET_Y - b.y) / vy;
+      if (tNet > 0.05) vz = (need - z0 + 0.5 * G * tNet * tNet) / tNet;
+    }
+    b.z = z0;
+    b.vx = vx;
+    b.vy = vy;
+    b.vz = vz;
     b.live = true;
     b.held = false;
   }
@@ -779,7 +807,7 @@ export class Game {
       this.moveTo(p, land.x + rand(-d.err, d.err) * 0.25, ty, dt);
       const reach = 3.55;
       const close = dist(p.x, p.y, this.ball.x, this.ball.y) < reach + 0.55;
-      const zone = this.ball.z < 6.4 && this.ball.z > 0.12;
+      const zone = this.ball.z < 6.4 && this.ball.z > 0.45;
       const mustLetBounce =
         (p.side !== this.match.server && !this.match.serveBounced) ||
         (p.side === this.match.server && !this.match.returnBounced);
@@ -842,27 +870,31 @@ export class Game {
     const steps = 3;
     const sdt = dt / steps;
     for (let i = 0; i < steps; i++) {
-      const py = b.y;
+      const y0 = b.y;
+      const z0 = b.z;
+      const vz0 = b.vz;
+      const x0 = b.x;
       b.vz -= G * sdt;
       b.x += b.vx * sdt;
       b.y += b.vy * sdt;
       b.z += b.vz * sdt;
 
-      if ((py - NET_Y) * (b.y - NET_Y) <= 0 && py !== b.y) {
-        const t = (NET_Y - py) / (b.y - py);
-        const zCross = b.z - b.vz * sdt * (1 - t);
-        const xCross = b.x - b.vx * sdt * (1 - t);
+      if ((y0 - NET_Y) * (b.y - NET_Y) <= 0 && Math.abs(b.y - y0) > 1e-6) {
+        const frac = clamp((NET_Y - y0) / (b.y - y0), 0, 1);
+        const dtN = frac * sdt;
+        const zCross = z0 + vz0 * dtN - 0.5 * G * dtN * dtN;
+        const xCross = x0 + b.vx * dtN;
         const nh = netHeightAt(xCross);
-        if (zCross < nh - 0.12) {
+        if (zCross < nh - 0.05) {
           this.sfx.net();
           this.flash("NET", 0.9);
           this.endRally("net", b.lastHit);
           return;
         }
-        if (zCross < nh + 0.08) {
-          b.vy *= 0.42;
-          b.vx *= 0.7;
-          b.vz = Math.abs(b.vz) * 0.25 + 1.2;
+        if (zCross < nh + 0.18) {
+          b.vy *= 0.55;
+          b.vx *= 0.82;
+          b.vz = Math.max(Math.abs(b.vz) * 0.35, 1.4);
           this.sfx.net();
           this.toast("Net cord — play on");
         }
