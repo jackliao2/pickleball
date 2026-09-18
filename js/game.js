@@ -1648,10 +1648,8 @@ export class Game {
 
     if (!Number.isFinite(b.x) || b.y < -12 || b.y > 58 || b.z > 28 || b.z < -1) {
       if (b.lastBounceSide != null && b.bouncesSide >= 1) {
-        this.flash("NOT UP", 1.1);
-        this.endRally("not-up", b.lastBounceSide);
+        this.endRally("double", b.lastBounceSide);
       } else {
-        this.flash("OUT", 1);
         this.endRally("out", b.lastHit);
       }
       return;
@@ -1662,8 +1660,7 @@ export class Game {
 
     if (b.z === 0 && Math.hypot(b.vx, b.vy) < 1.4 && b.vz === 0) {
       const side = b.y < NET_Y ? "near" : "far";
-      this.flash("NOT UP", 1.1);
-      this.endRally("not-up", side);
+      this.endRally("double", side);
     }
   }
 
@@ -1689,13 +1686,9 @@ export class Game {
 
     if (out) {
       if (b.lastBounceSide != null && b.bouncesSide >= 1) {
-        this.flash("DOUBLE BOUNCE", 1.15);
-        this.sfx.fault();
         this.endRally("double", b.lastBounceSide);
         return;
       }
-      this.flash("OUT", 1.05);
-      this.sfx.fault();
       this.endRally("out", b.lastHit);
       return;
     }
@@ -1703,8 +1696,6 @@ export class Game {
     if (b.lastBounceSide === side) {
       b.bouncesSide += 1;
       if (b.bouncesSide >= 2) {
-        this.flash("DOUBLE BOUNCE", 1.15);
-        this.sfx.fault();
         this.endRally("double", side);
         return;
       }
@@ -1734,7 +1725,25 @@ export class Game {
 
     const server = this.match.server;
     let highlight = null;
+    const faultCall =
+      reason === "double" || reason === "not-up"
+        ? "DOUBLE BOUNCE"
+        : reason === "out"
+          ? "OUT"
+          : reason === "net"
+            ? "NET"
+            : reason === "kitchen"
+              ? "KITCHEN"
+              : reason === "two-bounce"
+                ? "TWO-BOUNCE"
+                : reason === "foot-fault"
+                  ? "FOOT FAULT"
+                  : reason === "serve-fault"
+                    ? null
+                    : null;
     if (faulter === server) {
+      if (faultCall) this.flash(faultCall, 1.1);
+      this.sfx.fault();
       if (this.isDoubles() && this.match.startOneServe) {
         this.match.startOneServe = false;
         this.match.server = server === "near" ? "far" : "near";
@@ -1751,6 +1760,7 @@ export class Game {
     } else {
       this.match[server] += 1;
       this.sfx.cheer();
+      const youScored = server === "near";
       const opps = this.allPlayers().filter((o) => o.side === faulter);
       const farFromBall = opps.every((o) => dist(o.x, o.y, this.ball.x, this.ball.y) > 3.2);
       if (this.rallyLen <= 1 && this.match.serveBounced && (reason === "double" || reason === "not-up")) {
@@ -1771,8 +1781,13 @@ export class Game {
         highlight = "HANDS";
         this.sfx.crowd(1.1);
         this.buzz([12, 20, 12, 20, 28]);
+      } else if (youScored) {
+        this.flash("POINT", 1.05);
+        this.sfx.crowd(0.7);
+        this.buzz(18);
       } else {
-        this.toast("Point");
+        if (faultCall) this.flash(faultCall, 1.1);
+        else this.toast("Point");
         this.sfx.crowd(0.7);
         this.buzz(18);
       }
