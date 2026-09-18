@@ -58,6 +58,10 @@ function playerInKitchen(p) {
   return p.y <= NET_Y + NVZ && p.y >= NET_Y && p.x >= -0.4 && p.x <= CW + 0.4;
 }
 
+function kitchenSafeY(side) {
+  return side === "near" ? NET_Y - NVZ - 0.55 : NET_Y + NVZ + 0.55;
+}
+
 /** Serve must land past the kitchen line, in the diagonal box, lines-in except NVZ line. */
 function inServiceBox(x, y, receiverSide, fromRight) {
   const left = fromRight;
@@ -376,28 +380,45 @@ export class Game {
     this.canvas.height = Math.floor(this.h * dpr);
     this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     this.view = {
-      top: Math.max(64, this.h * 0.1),
-      bot: this.h - Math.max(56, this.h * 0.08),
-      near: 1.18,
-      far: 0.54,
+      top: Math.max(72, this.h * 0.12),
+      bot: this.h - Math.max(52, this.h * 0.07),
+      d0: 42,
+      near: 1.08,
     };
   }
 
+  courtT(y) {
+    const d0 = this.view.d0;
+    const d = d0 + y;
+    const d1 = d0 + CL;
+    return (1 / d0 - 1 / d) / (1 / d0 - 1 / d1);
+  }
+
+  yFromCourtT(t) {
+    const d0 = this.view.d0;
+    const d1 = d0 + CL;
+    const inv = 1 / d0 - t * (1 / d0 - 1 / d1);
+    return 1 / inv - d0;
+  }
+
   project(x, y, z) {
-    const t = clamp(y / CL, -0.2, 1.25);
-    const persp = lerp(this.view.near, this.view.far, clamp(y / CL, 0, 1));
-    const sy = lerp(this.view.bot, this.view.top, t) - z * 12.5 * persp + this.shake * (Math.random() - 0.5);
-    const half = this.w * 0.4 * persp;
+    const d0 = this.view.d0;
+    const t = this.courtT(y);
+    const persp = this.view.near * (d0 / Math.max(8, d0 + y));
+    const shake = this.shake ? this.shake * (Math.random() - 0.5) : 0;
+    const sy = lerp(this.view.bot, this.view.top, t) - z * 13.2 * persp + shake;
+    const half = this.w * 0.39 * persp;
     const sx = this.w / 2 + this.camX + ((x - 10) / 10) * half;
     return { sx, sy, s: persp };
   }
 
   unproject(sx, sy) {
     const { top, bot } = this.view;
-    const t = clamp((bot - sy) / (bot - top), -0.15, 1.2);
-    const y = t * CL;
-    const persp = lerp(this.view.near, this.view.far, clamp(y / CL, 0, 1));
-    const half = this.w * 0.4 * persp;
+    const t = clamp((bot - sy) / (bot - top), -0.12, 1.15);
+    const y = this.yFromCourtT(t);
+    const d0 = this.view.d0;
+    const persp = this.view.near * (d0 / (d0 + y));
+    const half = this.w * 0.39 * persp;
     const x = 10 + ((sx - this.w / 2 - this.camX) / half) * 10;
     return { x, y };
   }
@@ -749,7 +770,13 @@ export class Game {
         p.x = clamp(p.x, -2.5, CW + 2.5);
         p.y = clamp(p.y, NET_Y + 0.35, CL + 3.2);
       }
-      if (p.lastVolley > this.time - 0.4 && playerInKitchen(p) && this.phase === "rally" && this.ball.live) {
+      if (
+        p.lastVolley > this.time - 0.32 &&
+        playerInKitchen(p) &&
+        this.phase === "rally" &&
+        this.ball.live &&
+        !(this.mode === "cpu" && p === this.far)
+      ) {
         this.flash("KITCHEN", 1.15);
         this.sfx.fault();
         this.endRally("kitchen", p.side);
@@ -824,36 +851,50 @@ export class Game {
       }
       return;
     }
+    const outY = kitchenSafeY(p.side);
     if (this.phase !== "rally" || !this.ball.live) {
-      const homeY = this.twoBounceDone() ? (p.side === "near" ? 15.4 : 28.6) : p.side === "near" ? 4 : 40;
+      const homeY = this.twoBounceDone() ? outY : p.side === "near" ? 4 : 40;
       this.moveTo(p, 10, homeY, dt);
       return;
     }
 
     const incoming = this.incoming(p);
     const land = this.predictLanding(this.ball);
+    if (this.time - p.lastVolley < 0.55) {
+      this.moveTo(p, p.x, outY, dt);
+      return;
+    }
     if (incoming) {
-      const ty = land.y + (p.side === "near" ? -1.15 : 1.15);
-      this.moveTo(p, land.x + rand(-d.err, d.err) * 0.25, ty, dt);
+      const bouncedHere = this.ball.lastBounceSide === p.side;
+      let ty;
+      if (!bouncedHere) {
+        ty = p.side === "near" ? Math.min(land.y - 1.0, outY) : Math.max(land.y + 1.0, outY);
+      } else {
+        ty = land.y + (p.side === "near" ? -0.8 : 0.8);
+      }
+      this.moveTo(p, land.x + rand(-d.err, d.err) * 0.2, ty, dt);
       const reach = 4.1;
       const close = dist(p.x, p.y, this.ball.x, this.ball.y) < reach + 0.7;
       const zone = this.ball.z < 7 && this.ball.z > 0.22;
       const mustLetBounce =
         (p.side !== this.match.server && !this.match.serveBounced) ||
         (p.side === this.match.server && !this.match.returnBounced);
-      const bouncedHere = this.ball.lastBounceSide === p.side;
       const volley = this.ball.z > 0.28 && !bouncedHere;
       if (mustLetBounce && !bouncedHere) {
         /* wait for the two-bounce rule */
       } else if (volley && playerInKitchen(p)) {
-        /* never volley in the kitchen */
+        this.moveTo(p, p.x, outY, dt);
       } else if (close && zone && !p.swinging) {
-        p.charge = this.chooseAIShot(p);
-        this.doSwing(p, p.charge);
-        p.charge = 0;
+        if (volley && playerInKitchen(p)) {
+          this.moveTo(p, p.x, outY, dt);
+        } else {
+          p.charge = this.chooseAIShot(p);
+          this.doSwing(p, p.charge);
+          p.charge = 0;
+        }
       }
     } else {
-      const homeY = this.twoBounceDone() ? (p.side === "near" ? 15.35 : 28.65) : p.side === "near" ? 5.5 : 38.5;
+      const homeY = this.twoBounceDone() ? outY : p.side === "near" ? 5.5 : 38.5;
       const homeX = lerp(p.x, this.ball.x, 0.18);
       this.moveTo(p, clamp(homeX, 3, 17), homeY, dt);
     }
