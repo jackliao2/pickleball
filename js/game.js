@@ -520,7 +520,7 @@ export class Game {
     };
     this.applyLook(dummy, this.youLook);
     const prev = this.project.bind(this);
-    this.project = () => ({ sx: w / 2, sy: h * 0.86, s: 2.35 });
+    this.project = () => ({ sx: w / 2, sy: h * 0.9, s: 1.55 });
     this.drawPlayer(ctx, dummy);
     this.project = prev;
   }
@@ -803,7 +803,7 @@ export class Game {
     const st = emptyStats();
     for (const id of STAT_IDS) st[id] = clamp(Number(build?.[id]) || 6, 2, 10);
     p.stats = st;
-    p.baseSpeed = 3.4 + st.speed * 0.98;
+    p.baseSpeed = 5.1 + st.speed * 0.8;
     p.speed = p.baseSpeed;
     p.powerMul = 0.62 + st.power * 0.08;
     p.aimSpread = lerp(3.6, 0.2, st.angle / 10);
