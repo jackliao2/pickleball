@@ -100,7 +100,7 @@ function netHeightAt(x) {
 }
 
 function inCourt(x, y) {
-  return x >= 0 && x <= CW && y >= 0 && y <= CL;
+  return x >= -0.08 && x <= CW + 0.08 && y >= -0.08 && y <= CL + 0.08;
 }
 
 function inKitchen(x, y) {
@@ -109,8 +109,9 @@ function inKitchen(x, y) {
 }
 
 function playerInKitchen(p) {
-  if (p.side === "near") return p.y >= NET_Y - NVZ && p.y <= NET_Y && p.x >= -0.4 && p.x <= CW + 0.4;
-  return p.y <= NET_Y + NVZ && p.y >= NET_Y && p.x >= -0.4 && p.x <= CW + 0.4;
+  const pad = 0.4;
+  if (p.side === "near") return p.y >= NET_Y - NVZ + pad && p.y <= NET_Y && p.x >= -0.4 && p.x <= CW + 0.4;
+  return p.y <= NET_Y + NVZ - pad && p.y >= NET_Y && p.x >= -0.4 && p.x <= CW + 0.4;
 }
 
 function kitchenSafeY(side) {
@@ -624,6 +625,10 @@ export class Game {
   canContact(p, b) {
     if (!b || !b.live) return false;
     if (this.needsBounce(p) && b.lastBounceSide !== p.side) return false;
+    if (b.lastHit === p.side) {
+      const crossed = p.side === "near" ? b.y > NET_Y + 0.35 : b.y < NET_Y - 0.35;
+      if (!crossed) return false;
+    }
     const onSide = p.side === "near" ? b.y <= NET_Y + 0.55 : b.y >= NET_Y - 0.55;
     if (!onSide) return false;
     if (this.inReach(p, b.x, b.y, b.z)) return true;
@@ -1224,7 +1229,6 @@ export class Game {
         return;
       }
       p.lastVolley = this.time;
-      p.kitchenWatch = playerInKitchen(p) ? 0 : this.time + 0.42;
     }
 
     const opp = this.closestOpp(p);
@@ -1407,6 +1411,7 @@ export class Game {
         !p.swinging &&
         this.phase === "rally" &&
         this.incoming(p) &&
+        !playerInKitchen(p) &&
         this.canContact(p, this.ball)
       ) {
         this.releaseSwing(p);
@@ -1434,18 +1439,6 @@ export class Game {
         p.y = clamp(p.y, NET_Y + 0.35, CL + 3.2);
       }
       if (p.kitchenWatch && this.time > p.kitchenWatch) p.kitchenWatch = 0;
-      if (
-        p.kitchenWatch &&
-        playerInKitchen(p) &&
-        this.phase === "rally" &&
-        this.ball.live &&
-        !this.isCpuSide(p)
-      ) {
-        this.flash("KITCHEN", 1.15);
-        this.sfx.fault();
-        this.endRally("kitchen", p.side);
-        return;
-      }
     }
   }
 
@@ -1793,7 +1786,10 @@ export class Game {
                     ? null
                     : null;
     if (faulter === server) {
-      if (faultCall) this.flash(faultCall, 1.1);
+      const youWonRally = this.ball.lastHit === "near" && faulter === "far";
+      if (youWonRally && (reason === "double" || reason === "not-up" || reason === "out" || reason === "net")) {
+        this.flash("SIDE OUT", 1.1);
+      } else if (faultCall) this.flash(faultCall, 1.1);
       this.sfx.fault();
       if (this.isDoubles() && this.match.startOneServe) {
         this.match.startOneServe = false;
