@@ -129,6 +129,17 @@ const TOURNAMENT = [
   },
 ];
 const TOURNEY_KEY = "pb-tourney-v1";
+const VENUE_KEY = "pb-venue-v1";
+const VENUES = [
+  { id: "park", name: "Park", kind: "out", sky: ["#7ec8e8", "#c7e7f5", "#e7f3ea"], sun: "#f7e3a1", clouds: true, ground: ["#4f8a46", "#2f5c32"], apron: "#8aa7b8", runoff: "#cfc6b4", court: ["#1a6fb4", "#2b8ad0"], kitchen: "rgba(10,50,90,0.22)", line: "#f7f4ea" },
+  { id: "dusk", name: "Dusk", kind: "out", sky: ["#1e2a58", "#e07a3d", "#f6c27a"], sun: "#ffb14a", ground: ["#3a5636", "#22301e"], apron: "#6a7684", runoff: "#b7a78c", court: ["#184e88", "#246ab0"], kitchen: "rgba(8,28,70,0.3)", line: "#f4efe0" },
+  { id: "night", name: "Night", kind: "out", sky: ["#0a1020", "#17233e", "#243048"], moon: "#e8eef8", lights: true, ground: ["#1a2c1c", "#101810"], apron: "#3a4552", runoff: "#4a5348", court: ["#14386c", "#1e4e8c"], kitchen: "rgba(0,18,48,0.38)", line: "#dfe8ff" },
+  { id: "desert", name: "Desert", kind: "out", sky: ["#86b7de", "#f2d39a", "#f6e2b8"], sun: "#ffe08a", ground: ["#d2a36a", "#b07a3c"], apron: "#c9a06a", runoff: "#e6c992", court: ["#c45c2a", "#e07a3d"], kitchen: "rgba(80,30,10,0.24)", line: "#fff6e0" },
+  { id: "beach", name: "Beach", kind: "out", sky: ["#6ec4e8", "#bde7f5", "#fff4d6"], sun: "#ffe9a0", clouds: true, ocean: true, ground: ["#e8d5a3", "#d4b56a"], apron: "#6eb4d2", runoff: "#ead7a8", court: ["#1aa39a", "#2bc4b8"], kitchen: "rgba(10,60,60,0.24)", line: "#f7f4ea" },
+  { id: "gym", name: "Rec gym", kind: "in", sky: ["#3d3a36", "#58534e", "#6e6860"], indoor: true, ground: ["#4a4036", "#2e2822"], apron: "#6a5e52", runoff: "#8a7a68", court: ["#2f6f4e", "#3d8a62"], kitchen: "rgba(20,40,20,0.3)", line: "#f4f1e8" },
+  { id: "arena", name: "Arena", kind: "in", sky: ["#12141c", "#1c2230", "#252b3a"], indoor: true, lights: true, ground: ["#1a1e28", "#10141c"], apron: "#2a3140", runoff: "#3a4254", court: ["#3d7ea6", "#4a92c0"], kitchen: "rgba(10,30,60,0.32)", line: "#e8f0ff" },
+  { id: "club", name: "Club", kind: "in", sky: ["#2a2438", "#3d3450", "#4a4060"], indoor: true, ground: ["#2c2438", "#1a1624"], apron: "#4a3f58", runoff: "#6a5d78", court: ["#7b5ea7", "#9478c4"], kitchen: "rgba(40,20,60,0.3)", line: "#f4e8ff" },
+];
 
 function emptyStats() {
   return { speed: 6, power: 6, angle: 6, serve: 6, hands: 6, reach: 6 };
@@ -373,6 +384,7 @@ export class Game {
     this.touch = false;
 
     this.lookSpin = { you: 0, opp: 0 };
+    this.venue = this.loadVenue();
     this.youLook = this.loadLook() || { ...DEFAULT_YOU_LOOK };
     this.oppLook = randomLook();
     this.near = this.makePlayer("near");
@@ -480,6 +492,50 @@ export class Game {
     } catch {
       /* ignore */
     }
+  }
+
+  loadVenue() {
+    try {
+      const id = localStorage.getItem(VENUE_KEY);
+      return VENUES.find((v) => v.id === id) || VENUES[0];
+    } catch {
+      return VENUES[0];
+    }
+  }
+
+  setVenue(id) {
+    this.venue = VENUES.find((v) => v.id === id) || VENUES[0];
+    try {
+      localStorage.setItem(VENUE_KEY, this.venue.id);
+    } catch {
+      /* ignore */
+    }
+    this.renderVenuePicks();
+  }
+
+  randomVenue() {
+    const pick = VENUES[(Math.random() * VENUES.length) | 0];
+    this.setVenue(pick.id);
+  }
+
+  renderVenuePicks() {
+    document.querySelectorAll(".venue-picks").forEach((box) => {
+      box.innerHTML = "";
+      ["out", "in"].forEach((kind) => {
+        const lab = document.createElement("span");
+        lab.className = "venue-kind";
+        lab.textContent = kind === "out" ? "Outdoor" : "Indoor";
+        box.appendChild(lab);
+        VENUES.filter((v) => v.kind === kind).forEach((v) => {
+          const b = document.createElement("button");
+          b.type = "button";
+          b.textContent = v.name;
+          b.classList.toggle("on", this.venue?.id === v.id);
+          b.onclick = () => this.setVenue(v.id);
+          box.appendChild(b);
+        });
+      });
+    });
   }
 
   rerollLook(who = "you") {
@@ -662,6 +718,9 @@ export class Game {
     $("btn-start-match").onclick = () => this.confirmRoster();
     $("btn-random-look").onclick = () => this.rerollLook("you");
     $("btn-random-look-opp").onclick = () => this.rerollLook("opp");
+    $("btn-random-venue")?.addEventListener("click", () => this.randomVenue());
+    $("btn-random-venue-roster")?.addEventListener("click", () => this.randomVenue());
+    this.renderVenuePicks();
     $("btn-roster-back").onclick = () => this.closeRoster();
     $("btn-howto").onclick = () => this.showHowTo(true);
     $("btn-howto-close").onclick = () => this.showHowTo(false);
@@ -2529,44 +2588,86 @@ export class Game {
   }
 
   drawSky(ctx) {
+    const v = this.venue || VENUES[0];
     const { w, h } = this;
-    const g = ctx.createLinearGradient(0, 0, 0, h * 0.55);
-    g.addColorStop(0, "#7ec8e8");
-    g.addColorStop(0.55, "#c7e7f5");
-    g.addColorStop(1, "#e7f3ea");
+    const g = ctx.createLinearGradient(0, 0, 0, h * (v.indoor ? 0.62 : 0.55));
+    g.addColorStop(0, v.sky[0]);
+    g.addColorStop(0.55, v.sky[1]);
+    g.addColorStop(1, v.sky[2]);
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, w, h);
-    ctx.fillStyle = "rgba(255,255,255,0.55)";
-    ctx.beginPath();
-    ctx.ellipse(w * 0.18, h * 0.1, 90, 28, 0, 0, TAU);
-    ctx.ellipse(w * 0.22, h * 0.11, 60, 22, 0, 0, TAU);
-    ctx.ellipse(w * 0.78, h * 0.08, 110, 30, 0, 0, TAU);
-    ctx.fill();
-    ctx.fillStyle = "#f7e3a1";
-    ctx.beginPath();
-    ctx.arc(w * 0.86, h * 0.08, 34, 0, TAU);
-    ctx.fill();
+    if (v.indoor) {
+      ctx.fillStyle = "rgba(0,0,0,0.28)";
+      ctx.fillRect(0, 0, w, h * 0.11);
+      for (let i = 0; i < 5; i++) {
+        const x = w * (0.12 + i * 0.19);
+        ctx.fillStyle = "rgba(255,228,150,0.5)";
+        ctx.beginPath();
+        ctx.ellipse(x, h * 0.075, 26, 9, 0, 0, TAU);
+        ctx.fill();
+      }
+      return;
+    }
+    if (v.clouds) {
+      ctx.fillStyle = "rgba(255,255,255,0.55)";
+      ctx.beginPath();
+      ctx.ellipse(w * 0.18, h * 0.1, 90, 28, 0, 0, TAU);
+      ctx.ellipse(w * 0.22, h * 0.11, 60, 22, 0, 0, TAU);
+      ctx.ellipse(w * 0.78, h * 0.08, 110, 30, 0, 0, TAU);
+      ctx.fill();
+    }
+    if (v.sun) {
+      ctx.fillStyle = v.sun;
+      ctx.beginPath();
+      ctx.arc(w * 0.86, h * 0.08, 34, 0, TAU);
+      ctx.fill();
+    }
+    if (v.moon) {
+      ctx.fillStyle = v.moon;
+      ctx.beginPath();
+      ctx.arc(w * 0.84, h * 0.09, 22, 0, TAU);
+      ctx.fill();
+      ctx.fillStyle = v.sky[0];
+      ctx.beginPath();
+      ctx.arc(w * 0.85, h * 0.08, 18, 0, TAU);
+      ctx.fill();
+    }
   }
 
   drawGround(ctx) {
+    const v = this.venue || VENUES[0];
     const { w, h } = this;
     const g = ctx.createLinearGradient(0, h * 0.28, 0, h);
-    g.addColorStop(0, "#4f8a46");
-    g.addColorStop(1, "#2f5c32");
+    g.addColorStop(0, v.ground[0]);
+    g.addColorStop(1, v.ground[1]);
     ctx.fillStyle = g;
     ctx.fillRect(0, h * 0.28, w, h);
     const fl = this.project(-8, 50, 0);
-    const fr = this.project(28, 50, 0);
-    ctx.fillStyle = "#8aa7b8";
+    ctx.fillStyle = v.apron;
     ctx.fillRect(0, 0, w, fl.sy);
-    ctx.strokeStyle = "rgba(20,40,30,0.18)";
+    if (v.ocean) {
+      const og = ctx.createLinearGradient(0, fl.sy - 90, 0, fl.sy);
+      og.addColorStop(0, "#5aa9d4");
+      og.addColorStop(1, v.apron);
+      ctx.fillStyle = og;
+      ctx.fillRect(0, fl.sy - 90, w, 90);
+    }
+    ctx.strokeStyle = v.indoor ? "rgba(255,255,255,0.08)" : "rgba(20,40,30,0.18)";
     ctx.lineWidth = 2;
     for (let i = 0; i < 18; i++) {
       const x = lerp(80, w - 80, i / 17);
       ctx.beginPath();
-      ctx.moveTo(x, fl.sy - 70);
+      ctx.moveTo(x, fl.sy - (v.indoor ? 110 : 70));
       ctx.lineTo(x, fl.sy);
       ctx.stroke();
+    }
+    if (v.lights && !v.indoor) {
+      ctx.fillStyle = "rgba(255,230,150,0.35)";
+      for (const x of [w * 0.18, w * 0.5, w * 0.82]) {
+        ctx.beginPath();
+        ctx.ellipse(x, fl.sy - 8, 40, 6, 0, 0, TAU);
+        ctx.fill();
+      }
     }
   }
 
@@ -2579,22 +2680,23 @@ export class Game {
     };
     const P = (x, y) => this.project(x, y, 0);
 
+    const v = this.venue || VENUES[0];
     const runoff = [P(-4, -4), P(24, -4), P(24, 48), P(-4, 48)];
     poly(runoff);
-    ctx.fillStyle = "#cfc6b4";
+    ctx.fillStyle = v.runoff;
     ctx.fill();
 
     const court = [P(0, 0), P(20, 0), P(20, 44), P(0, 44)];
     poly(court);
     const cg = ctx.createLinearGradient(0, P(10, 44).sy, 0, P(10, 0).sy);
-    cg.addColorStop(0, "#1a6fb4");
-    cg.addColorStop(1, "#2b8ad0");
+    cg.addColorStop(0, v.court[0]);
+    cg.addColorStop(1, v.court[1]);
     ctx.fillStyle = cg;
     ctx.fill();
 
     const kn = [P(0, 15), P(20, 15), P(20, 29), P(0, 29)];
     poly(kn);
-    ctx.fillStyle = "rgba(10, 50, 90, 0.22)";
+    ctx.fillStyle = v.kitchen;
     ctx.fill();
 
     ctx.save();
@@ -2608,7 +2710,7 @@ export class Game {
       ctx.moveTo(a.sx, a.sy);
       ctx.lineTo(b.sx, b.sy);
       ctx.lineWidth = width;
-      ctx.strokeStyle = "#f7f4ea";
+      ctx.strokeStyle = v.line;
       ctx.lineCap = "butt";
       ctx.stroke();
     };
@@ -2622,13 +2724,16 @@ export class Game {
     line(P(10, 0), P(10, 15), lw(8));
     line(P(10, 29), P(10, 44), lw(36));
 
-    ctx.fillStyle = "rgba(244,241,232,0.55)";
+    ctx.save();
+    ctx.globalAlpha = 0.55;
+    ctx.fillStyle = v.line;
     ctx.font = "600 11px Outfit, sans-serif";
     ctx.textAlign = "center";
     const k1 = P(10, 17.2);
     const k2 = P(10, 26.8);
     ctx.fillText("KITCHEN", k1.sx, k1.sy);
     ctx.fillText("KITCHEN", k2.sx, k2.sy);
+    ctx.restore();
   }
 
   drawServeTarget(ctx) {
