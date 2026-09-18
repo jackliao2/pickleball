@@ -481,79 +481,52 @@ export class Game {
     }
   }
 
+  rerollLook() {
+    this.youLook = randomLook();
+    this.saveLook();
+    this.applyLook(this.near, this.youLook);
+    this.drawLookPreview();
+  }
+
+  drawLookPreview() {
+    const c = $("look-preview");
+    if (!c) return;
+    const ctx = c.getContext("2d");
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const w = 200;
+    const h = 260;
+    if (c.width !== w * dpr) {
+      c.width = w * dpr;
+      c.height = h * dpr;
+    }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+    const g = ctx.createLinearGradient(0, 0, 0, h);
+    g.addColorStop(0, "rgba(26,111,180,0.35)");
+    g.addColorStop(1, "rgba(7,24,44,0.15)");
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, w, h);
+    const dummy = {
+      ...this.near,
+      side: "far",
+      swinging: false,
+      charging: false,
+      charge: 0,
+      swing: 0,
+      crouch: 0.22,
+      twist: 0.04,
+      hand: 1,
+      shotKind: "dink",
+    };
+    this.applyLook(dummy, this.youLook);
+    const prev = this.project.bind(this);
+    this.project = () => ({ sx: w / 2, sy: h * 0.86, s: 2.35 });
+    this.drawPlayer(ctx, dummy);
+    this.project = prev;
+  }
+
   renderLookPicker() {
-    const box = $("look-you");
-    if (!box) return;
-    box.innerHTML = "";
-    const addSwatches = (key, label, colors) => {
-      const row = document.createElement("div");
-      row.className = "look-row";
-      const lab = document.createElement("span");
-      lab.textContent = label;
-      row.appendChild(lab);
-      const wrap = document.createElement("div");
-      wrap.className = "swatches";
-      colors.forEach((c) => {
-        const b = document.createElement("button");
-        b.type = "button";
-        b.className = "swatch";
-        b.style.background = c;
-        if (this.youLook[key] === c) b.classList.add("on");
-        b.onclick = () => {
-          this.youLook[key] = c;
-          this.saveLook();
-          this.applyLook(this.near, this.youLook);
-          this.renderLookPicker();
-        };
-        wrap.appendChild(b);
-      });
-      row.appendChild(wrap);
-      box.appendChild(row);
-    };
-    addSwatches("skin", "Skin", SKINS);
-    addSwatches("shirt", "Shirt", SHIRTS);
-    addSwatches("shorts", "Shorts", SHORTS);
-    addSwatches("visor", "Hat color", HAT_COLORS);
-    addSwatches("hair", "Hair", HAIR_COLORS);
-    addSwatches("paddle", "Paddle", SHIRTS);
-    addSwatches("shoes", "Shoes", SHOES);
-    const chips = (key, label, opts) => {
-      const row = document.createElement("div");
-      row.className = "look-row";
-      const lab = document.createElement("span");
-      lab.textContent = label;
-      row.appendChild(lab);
-      const wrap = document.createElement("div");
-      wrap.className = "look-chips";
-      opts.forEach((id) => {
-        const b = document.createElement("button");
-        b.type = "button";
-        b.textContent = id;
-        if (this.youLook[key] === id) b.classList.add("on");
-        b.onclick = () => {
-          this.youLook[key] = id;
-          this.saveLook();
-          this.applyLook(this.near, this.youLook);
-          this.renderLookPicker();
-        };
-        wrap.appendChild(b);
-      });
-      row.appendChild(wrap);
-      box.appendChild(row);
-    };
-    chips("hat", "Hat", HATS);
-    chips("hairStyle", "Haircut", HAIR_STYLES);
-    const rnd = document.createElement("button");
-    rnd.type = "button";
-    rnd.className = "btn ghost look-random";
-    rnd.textContent = "Random kit";
-    rnd.onclick = () => {
-      this.youLook = randomLook();
-      this.saveLook();
-      this.applyLook(this.near, this.youLook);
-      this.renderLookPicker();
-    };
-    box.appendChild(rnd);
+    this.drawLookPreview();
   }
 
   makeBall() {
@@ -645,6 +618,7 @@ export class Game {
     $("btn-scout-back").onclick = () => this.closeScout();
     $("btn-p2").onclick = () => this.openRoster("p2");
     $("btn-start-match").onclick = () => this.confirmRoster();
+    $("btn-random-look").onclick = () => this.rerollLook();
     $("btn-roster-back").onclick = () => this.closeRoster();
     $("btn-howto").onclick = () => this.showHowTo(true);
     $("btn-howto-close").onclick = () => this.showHowTo(false);
