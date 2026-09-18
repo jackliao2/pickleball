@@ -1837,9 +1837,9 @@ export class Game {
         highlight = "WINNER";
         this.sfx.crowd(1.2);
         this.buzz([24, 40, 36]);
-      } else if (this.rallyLen >= 8) {
-        this.flash("HANDS", 1);
-        this.toast("Kitchen battle");
+      } else if (this.rallyLen >= 12) {
+        this.flash("POINT", 1.05);
+        this.toast("Hands battle — long kitchen rally");
         highlight = "HANDS";
         this.sfx.crowd(1.1);
         this.buzz([12, 20, 12, 20, 28]);
