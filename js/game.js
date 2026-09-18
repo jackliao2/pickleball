@@ -31,6 +31,8 @@ const PRESETS = {
   athlete: { name: "Athlete", speed: 9, power: 6, angle: 5, serve: 5, hands: 6, reach: 5 },
   cannon: { name: "Cannon", speed: 4, power: 9, angle: 4, serve: 10, hands: 4, reach: 5 },
 };
+const CHALLENGE_ORDER = ["touch", "balanced", "athlete", "kitchen", "banger", "cannon"];
+const CHALLENGE_KEY = "pb-gauntlet-v1";
 
 function emptyStats() {
   return { speed: 6, power: 6, angle: 6, serve: 6, hands: 6, reach: 6 };
@@ -198,9 +200,19 @@ class Sfx {
     this.beep(1200, 0.15, "sine", 0.06, 900);
   }
   cheer() {
-    this.beep(520, 0.16, "triangle", 0.11, 780);
-    this.beep(660, 0.14, "sine", 0.07, 880);
-    this.noise(0.12, 0.08);
+    this.beep(520, 0.24, "triangle", 0.2, 820);
+    this.beep(660, 0.22, "sine", 0.16, 980);
+    this.beep(392, 0.28, "triangle", 0.1);
+    this.beep(784, 0.16, "sine", 0.08);
+    this.noise(0.32, 0.2);
+  }
+  crowd(level) {
+    const n = clamp(level, 0.4, 2);
+    this.noise(0.28 + n * 0.16, 0.1 + n * 0.08);
+    this.beep(180 + n * 50, 0.18, "sine", 0.06 + n * 0.03);
+    this.beep(240 + n * 70, 0.14, "triangle", 0.05);
+    this.beep(330, 0.2, "sine", 0.04);
+    this.noise(0.12 + n * 0.08, 0.07 + n * 0.04);
   }
 }
 
@@ -229,6 +241,10 @@ export class Game {
 
     this.near = this.makePlayer("near");
     this.far = this.makePlayer("far");
+    this.nearB = this.makePlayer("near");
+    this.nearB.shirt = this.nearB.paddle = "#0e7c76";
+    this.farB = this.makePlayer("far");
+    this.farB.shirt = this.farB.paddle = "#b33b2e";
     this.ball = this.makeBall();
     this.match = this.freshMatch();
     this.phase = "serve";
@@ -242,6 +258,9 @@ export class Game {
     this.youBuild = { name: "All-court", ...emptyStats() };
     this.oppBuild = { name: "All-court", ...emptyStats() };
     this.pendingMode = "cpu";
+    this.tape = [];
+    this.replay = null;
+    this.challengeIndex = -1;
 
     this.bind();
     this.resize();
@@ -315,6 +334,8 @@ export class Game {
       returnBounced: false,
       targetRight: true,
       switched: false,
+      serverNum: 1,
+      startOneServe: true,
     };
   }
 
@@ -360,6 +381,10 @@ export class Game {
     });
 
     $("btn-cpu").onclick = () => this.openRoster("cpu");
+    $("btn-doubles").onclick = () => this.openRoster("doubles");
+    $("btn-challenge").onclick = () => this.openChallenge();
+    $("btn-challenge-back").onclick = () => this.closeChallenge();
+    $("btn-next-challenge").onclick = () => this.playNextChallenge();
     $("btn-p2").onclick = () => this.openRoster("p2");
     $("btn-start-match").onclick = () => this.confirmRoster();
     $("btn-roster-back").onclick = () => this.closeRoster();
@@ -502,20 +527,29 @@ export class Game {
     this.demo = false;
     this.screen = "play";
     this.paused = false;
+    this.replay = null;
+    this.tape = [];
     this.applyBuild(this.near, this.youBuild);
     this.applyBuild(this.far, this.oppBuild);
+    if (mode === "doubles") {
+      this.applyBuild(this.nearB, PRESETS.kitchen);
+      this.applyBuild(this.farB, this.oppBuild);
+    }
     document.body.classList.remove("menu-open");
     $("menu").hidden = true;
     $("roster").hidden = true;
     $("howto").hidden = true;
+    $("challenge").hidden = true;
     $("pause").hidden = true;
     $("over").hidden = true;
     $("hud").hidden = false;
-    $("name-near").textContent = this.youBuild.name || "YOU";
-    $("name-far").textContent = mode === "p2" ? this.oppBuild.name || "P2" : this.oppBuild.name || "CPU";
+    $("name-near").textContent = mode === "doubles" ? "YOU" : this.youBuild.name || "YOU";
+    $("name-far").textContent =
+      mode === "p2" ? this.oppBuild.name || "P2" : mode === "doubles" ? "THEM" : this.oppBuild.name || "CPU";
+    $("btn-next-challenge").hidden = true;
     this.match = this.freshMatch();
     this.meta = this.emptyMeta();
-    this.resetPoint(true);
+    this.resetPoint();
     this.flash("PLAY", 0.8);
     this.sfx.whistle();
     this.syncHud();
@@ -551,8 +585,9 @@ export class Game {
     this.pendingMode = mode;
     $("menu").hidden = true;
     $("howto").hidden = true;
+    $("challenge").hidden = true;
     $("roster").hidden = false;
-    $("opp-label").textContent = mode === "p2" ? "Player 2" : "Opponent";
+    $("opp-label").textContent = mode === "p2" ? "Player 2" : mode === "doubles" ? "Their team" : "Opponent";
     if (mode === "cpu") {
       const map = { easy: "touch", normal: "balanced", hard: "kitchen" };
       this.setBuild("opp", PRESETS[map[this.diff] || "balanced"], map[this.diff] || "balanced");
@@ -651,16 +686,20 @@ export class Game {
   toMenu() {
     this.screen = "menu";
     this.demo = true;
+    this.mode = "cpu";
     this.paused = false;
+    this.replay = null;
+    this.challengeIndex = -1;
     document.body.classList.add("menu-open");
     $("menu").hidden = false;
     $("roster").hidden = true;
     $("pause").hidden = true;
     $("over").hidden = true;
     $("howto").hidden = true;
+    $("challenge").hidden = true;
     $("hud").hidden = true;
     this.match = this.freshMatch();
-    this.resetPoint(true);
+    this.resetPoint();
   }
 
   showHowTo(on) {
@@ -684,14 +723,112 @@ export class Game {
     else document.exitFullscreen?.();
   }
 
+  isDoubles() {
+    return this.mode === "doubles";
+  }
+
+  isCpuSide(p) {
+    if (p === this.near) return false;
+    return this.mode === "cpu" || this.mode === "doubles" || this.mode === "challenge";
+  }
+
+  allPlayers() {
+    return this.isDoubles() ? [this.near, this.nearB, this.far, this.farB] : [this.near, this.far];
+  }
+
   serverPlayer() {
-    return this.match.server === "near" ? this.near : this.far;
+    if (!this.isDoubles()) return this.match.server === "near" ? this.near : this.far;
+    if (this.match.server === "near") return this.match.serverNum === 1 ? this.near : this.nearB;
+    return this.match.serverNum === 1 ? this.far : this.farB;
   }
   receiverPlayer() {
-    return this.match.server === "near" ? this.far : this.near;
+    if (!this.isDoubles()) return this.match.server === "near" ? this.far : this.near;
+    const even = this.evenScore();
+    if (this.match.server === "near") return even ? this.far : this.farB;
+    return even ? this.near : this.nearB;
   }
   evenScore() {
     return this.match[this.match.server] % 2 === 0;
+  }
+
+  gauntletCleared() {
+    try {
+      const n = parseInt(localStorage.getItem(CHALLENGE_KEY) || "0", 10);
+      return Number.isFinite(n) ? clamp(n, 0, CHALLENGE_ORDER.length) : 0;
+    } catch {
+      return 0;
+    }
+  }
+
+  saveGauntlet(n) {
+    try {
+      localStorage.setItem(CHALLENGE_KEY, String(clamp(n, 0, CHALLENGE_ORDER.length)));
+    } catch {
+      /* ignore */
+    }
+  }
+
+  openChallenge() {
+    $("menu").hidden = true;
+    $("roster").hidden = true;
+    $("howto").hidden = true;
+    $("challenge").hidden = false;
+    this.renderChallengeList();
+  }
+
+  closeChallenge() {
+    $("challenge").hidden = true;
+    $("menu").hidden = false;
+  }
+
+  renderChallengeList() {
+    const unlocked = this.gauntletCleared();
+    const list = $("challenge-list");
+    list.innerHTML = "";
+    CHALLENGE_ORDER.forEach((id, i) => {
+      const pre = PRESETS[id];
+      const btn = document.createElement("button");
+      btn.type = "button";
+      const done = i < unlocked;
+      const lock = i > unlocked;
+      btn.classList.toggle("done", done);
+      btn.classList.toggle("locked", lock);
+      const tag = done ? "Cleared" : lock ? "Locked" : "Fight";
+      btn.innerHTML = `<span>${i + 1}. ${pre.name}</span><span class="tag">${tag}</span>`;
+      if (!lock) btn.onclick = () => this.startChallenge(i);
+      list.appendChild(btn);
+    });
+    const n = unlocked;
+    $("challenge-lede").textContent =
+      n >= CHALLENGE_ORDER.length
+        ? "Gauntlet complete. Replay any opponent."
+        : `Beat each build in order. ${n} / ${CHALLENGE_ORDER.length} cleared. Progress saves on this device.`;
+  }
+
+  startChallenge(i) {
+    this.challengeIndex = i;
+    const pre = PRESETS[CHALLENGE_ORDER[i]];
+    this.oppBuild = { ...cloneStats(pre), name: pre.name };
+    $("challenge").hidden = true;
+    this.startMatch("challenge");
+  }
+
+  playNextChallenge() {
+    const next = this.challengeIndex + 1;
+    if (next >= CHALLENGE_ORDER.length) {
+      this.toMenu();
+      this.openChallenge();
+      return;
+    }
+    this.startChallenge(next);
+  }
+
+  buzz(ms) {
+    try {
+      navigator.vibrate?.(ms);
+    } catch {
+      /* ignore */
+    }
   }
 
   resetPoint() {
@@ -705,22 +842,21 @@ export class Game {
     this.ball = this.makeBall();
     this.ball.held = true;
     this.ball.lastHit = m.server;
-    this.near.swing = 0;
-    this.far.swing = 0;
-    this.near.charging = false;
-    this.far.charging = false;
-    this.near.charge = 0;
-    this.far.charge = 0;
-    this.near.lastVolley = -10;
-    this.far.lastVolley = -10;
-    this.near.kitchenWatch = 0;
-    this.far.kitchenWatch = 0;
-    this.near.chargeDir = 1;
-    this.far.chargeDir = 1;
+    this.tape = [];
+    for (const p of [this.near, this.far, this.nearB, this.farB]) {
+      p.swing = 0;
+      p.swinging = false;
+      p.charging = false;
+      p.charge = 0;
+      p.lastVolley = -10;
+      p.kitchenWatch = 0;
+      p.chargeDir = 1;
+    }
 
     const even = this.evenScore();
     m.targetRight = even;
-    if (m.server === "near") {
+    if (this.isDoubles()) this.placeDoubles(even);
+    else if (m.server === "near") {
       this.near.x = even ? 15.2 : 4.8;
       this.near.y = -1.15;
       this.far.x = even ? 5 : 15;
@@ -737,6 +873,35 @@ export class Game {
       fromRight: even,
     };
     this.syncHud();
+    if (this.screen === "play" && this.isDoubles() && this.serverPlayer() === this.nearB) {
+      this.toast("Partner serving");
+    }
+  }
+
+  placeDoubles(even) {
+    const srv = this.serverPlayer();
+    const rec = this.receiverPlayer();
+    const srvPartner = srv.side === "near" ? (srv === this.near ? this.nearB : this.near) : srv === this.far ? this.farB : this.far;
+    const recPartner = rec.side === "far" ? (rec === this.far ? this.farB : this.far) : rec === this.near ? this.nearB : this.near;
+    if (srv.side === "near") {
+      srv.x = even ? 15.2 : 4.8;
+      srv.y = -1.15;
+      srvPartner.x = even ? 4.8 : 15.2;
+      srvPartner.y = kitchenSafeY("near");
+      rec.x = even ? 5 : 15;
+      rec.y = 39.5;
+      recPartner.x = even ? 15 : 5;
+      recPartner.y = kitchenSafeY("far");
+    } else {
+      srv.x = even ? 4.8 : 15.2;
+      srv.y = 45.15;
+      srvPartner.x = even ? 15.2 : 4.8;
+      srvPartner.y = kitchenSafeY("far");
+      rec.x = even ? 15 : 5;
+      rec.y = 4.5;
+      recPartner.x = even ? 5 : 15;
+      recPartner.y = kitchenSafeY("near");
+    }
   }
 
   placeHeldBall() {
@@ -753,7 +918,7 @@ export class Game {
 
   beginCharge(p) {
     if (this.paused || this.screen !== "play") return;
-    if (this.phase === "dead") return;
+    if (this.phase === "dead" || this.phase === "replay") return;
     if (p.swinging) return;
     if (this.phase === "serve" && p !== this.serverPlayer()) return;
     p.charging = true;
@@ -846,7 +1011,19 @@ export class Game {
       p.kitchenWatch = playerInKitchen(p) ? 0 : this.time + 0.42;
     }
 
-    const opp = p.side === "near" ? this.far : this.near;
+    const opps = this.allPlayers().filter((o) => o.side !== p.side);
+    let opp = p.side === "near" ? this.far : this.near;
+    if (opps.length) {
+      opp = opps[0];
+      let best = dist(p.x, p.y, opp.x, opp.y);
+      for (const o of opps) {
+        const d2 = dist(p.x, p.y, o.x, o.y);
+        if (d2 < best) {
+          best = d2;
+          opp = o;
+        }
+      }
+    }
     const lob = p.side === "near" ? this.keys.has("KeyW") && power > 0.35 : this.keys.has("ArrowUp") && power > 0.35;
     const kitLine = p.side === "near" ? 15 : 29;
     const atKitchen = Math.abs(p.y - kitLine) < 3.1;
@@ -890,8 +1067,9 @@ export class Game {
     }
     p.swingRate = atKitchen || kind === "speedup" || kind === "smash" ? 3.8 : 2.2;
 
-    let noise = (p === this.far && this.mode === "cpu" ? DIFF[this.diff].err : 0.4) * (0.2 + d * 0.06) * (p.noiseMul || 1);
-    if (p === this.far && this.mode === "cpu") {
+    const cpu = this.isCpuSide(p);
+    let noise = (cpu ? DIFF[this.diff].err : 0.4) * (0.2 + d * 0.06) * (p.noiseMul || 1);
+    if (cpu) {
       tx = clamp(tx, 3.6, 16.4);
       ty = p.side === "far" ? clamp(ty, 3.2, 17.0) : clamp(ty, 27.0, 40.8);
       noise *= 0.3;
@@ -904,13 +1082,11 @@ export class Game {
     b.bouncesSide = 0;
     this.rallyLen += 1;
     this.sfx.hit(power, kind);
+    if (kind === "smash") this.buzz([24, 30, 48]);
+    else if (kind === "speedup") this.buzz([16, 24, 32]);
+    else this.buzz(10);
     this.spawnBurst(b.x, b.y, b.z, kind === "speedup" || kind === "smash" ? "#ffe082" : "#d4e157", kind === "speedup" ? 14 : 8);
     if (kind === "speedup" || kind === "smash") this.hitStop = 0.055;
-    try {
-      navigator.vibrate?.(12);
-    } catch {
-      /* ignore */
-    }
   }
 
   heightAtNet(y, z, vy, vz) {
@@ -1002,7 +1178,7 @@ export class Game {
       else this.ai(dt);
     }
 
-    for (const p of [this.near, this.far]) {
+    for (const p of this.allPlayers()) {
       if (p.charging) {
         p.chargeDir = p.chargeDir || 1;
         p.charge += dt * 1.55 * p.chargeDir;
@@ -1044,7 +1220,7 @@ export class Game {
         playerInKitchen(p) &&
         this.phase === "rally" &&
         this.ball.live &&
-        !(this.mode === "cpu" && p === this.far)
+        !this.isCpuSide(p)
       ) {
         this.flash("KITCHEN", 1.15);
         this.sfx.fault();
@@ -1106,7 +1282,10 @@ export class Game {
   ai(dt) {
     const bots = [];
     if (this.demo || this.screen === "menu") bots.push(this.near, this.far);
-    else if (this.mode === "cpu") bots.push(this.far);
+    else if (this.mode === "p2") {
+      /* human vs human */
+    } else if (this.isDoubles()) bots.push(this.nearB, this.far, this.farB);
+    else bots.push(this.far);
     for (const p of bots) this.runAI(p, dt);
   }
 
@@ -1118,9 +1297,19 @@ export class Game {
     if (this.phase === "serve") {
       if (p === this.serverPlayer()) {
         this.serveT += dt;
-        const delay = this.demo ? 0.7 : p.side === "far" ? Math.max(0.45, 1.25 - (p.hands || 6) * 0.07) : 99;
+        const delay = this.demo ? 0.7 : p === this.near ? 99 : Math.max(0.45, 1.2 - (p.hands || 6) * 0.07);
         if (this.serveT > delay) {
           this.doServe(p, rand(0.45, 0.72));
+        }
+      } else if (this.isDoubles()) {
+        const rec = this.receiverPlayer();
+        if (p === rec) {
+          const even = this.evenScore();
+          const tx = p.side === "far" ? (even ? 5 : 15) : even ? 15 : 5;
+          const ty = p.side === "far" ? 39.2 : 4.8;
+          this.moveTo(p, tx, ty, dt);
+        } else {
+          this.moveTo(p, p.x < 10 ? 5 : 15, kitchenSafeY(p.side), dt);
         }
       } else {
         const even = this.evenScore();
@@ -1144,6 +1333,15 @@ export class Game {
       return;
     }
     if (incoming) {
+      if (this.isDoubles()) {
+        const mates = this.allPlayers().filter((o) => o.side === p.side);
+        const myD = dist(p.x, p.y, land.x, land.y);
+        const closest = mates.every((o) => o === p || dist(o.x, o.y, land.x, land.y) >= myD - 0.35);
+        if (!closest) {
+          this.moveTo(p, p.x < 10 ? 5 : 15, this.twoBounceDone() ? outY : p.side === "near" ? 5.5 : 38.5, dt);
+          return;
+        }
+      }
       const bouncedHere = this.ball.lastBounceSide === p.side;
       let ty;
       if (!bouncedHere) {
@@ -1172,8 +1370,8 @@ export class Game {
       }
     } else {
       const homeY = this.twoBounceDone() ? outY : p.side === "near" ? 5.5 : 38.5;
-      const homeX = lerp(p.x, this.ball.x, 0.18);
-      this.moveTo(p, clamp(homeX, 3, 17), homeY, dt);
+      const homeX = this.isDoubles() ? (p.x < 10 ? 5 : 15) : clamp(lerp(p.x, this.ball.x, 0.18), 3, 17);
+      this.moveTo(p, homeX, homeY, dt);
     }
   }
 
@@ -1335,7 +1533,8 @@ export class Game {
   }
 
   endRally(reason, faulter) {
-    if (this.phase === "dead") return;
+    if (this.phase === "dead" || this.phase === "replay") return;
+    if (!this.demo && this.screen === "play" && this.phase === "rally") this.recordFrame();
     this.phase = "dead";
     this.deadT = this.demo ? 0.55 : 1.25;
     this.ball.live = false;
@@ -1347,25 +1546,48 @@ export class Game {
     if (reason === "kitchen") this.meta.kitchen += 1;
 
     const server = this.match.server;
+    let highlight = null;
     if (faulter === server) {
-      this.match.server = server === "near" ? "far" : "near";
-      this.toast("Side out");
+      if (this.isDoubles() && this.match.startOneServe) {
+        this.match.startOneServe = false;
+        this.match.server = server === "near" ? "far" : "near";
+        this.match.serverNum = 1;
+        this.toast("Side out");
+      } else if (this.isDoubles() && this.match.serverNum === 1) {
+        this.match.serverNum = 2;
+        this.toast("Second server");
+      } else {
+        this.match.server = server === "near" ? "far" : "near";
+        this.match.serverNum = 1;
+        this.toast("Side out");
+      }
     } else {
       this.match[server] += 1;
       this.sfx.cheer();
-      const opp = faulter === "near" ? this.near : this.far;
-      const farFromBall = dist(opp.x, opp.y, this.ball.x, this.ball.y) > 3.4;
+      const opps = this.allPlayers().filter((o) => o.side === faulter);
+      const farFromBall = opps.every((o) => dist(o.x, o.y, this.ball.x, this.ball.y) > 3.2);
       if (this.rallyLen <= 1) {
         this.meta.aces += 1;
         this.flash("ACE", 1.15);
+        highlight = "ACE";
+        this.sfx.crowd(1.4);
+        this.buzz([30, 50, 70]);
       } else if ((this.lastKind === "speedup" || this.lastKind === "smash") && farFromBall) {
         this.meta.winners += 1;
         this.flash("WINNER", 1.1);
+        highlight = "WINNER";
+        this.sfx.crowd(1.2);
+        this.buzz([24, 40, 36]);
       } else if (this.rallyLen >= 8) {
         this.flash("HANDS", 1);
         this.toast("Kitchen battle");
+        highlight = "HANDS";
+        this.sfx.crowd(1.1);
+        this.buzz([12, 20, 12, 20, 28]);
       } else {
         this.toast("Point");
+        this.sfx.crowd(0.7);
+        this.buzz(18);
       }
     }
     if (!this.match.switched && (this.match.near === 6 || this.match.far === 6)) {
@@ -1373,6 +1595,10 @@ export class Game {
       this.toast("6 — switch sides");
     }
     this.syncHud();
+    if (highlight && this.tape.length >= 18) {
+      this.beginReplay(highlight);
+      return;
+    }
     this.checkWin();
   }
 
@@ -1389,15 +1615,122 @@ export class Game {
       $("over-sub").textContent = `${a} – ${b}`;
       $("over-kicker").textContent = "Game to 11 · win by 2";
       $("over-stats").textContent = `Longest rally ${m.longest} · ${m.aces} ace${m.aces === 1 ? "" : "s"} · ${m.winners} winner${m.winners === 1 ? "" : "s"} · ${m.speedups} speed-ups`;
+      $("btn-next-challenge").hidden = true;
+      if (this.mode === "challenge") {
+        const i = this.challengeIndex;
+        const last = CHALLENGE_ORDER.length - 1;
+        if (a > b) {
+          this.saveGauntlet(Math.max(this.gauntletCleared(), i + 1));
+          if (i >= last) {
+            $("over-title").textContent = "Gauntlet done";
+            $("over-kicker").textContent = "All six builds cleared";
+          } else {
+            $("over-kicker").textContent = `Cleared ${PRESETS[CHALLENGE_ORDER[i]].name} · ${i + 1} / ${CHALLENGE_ORDER.length}`;
+            $("btn-next-challenge").hidden = false;
+          }
+        } else {
+          $("over-kicker").textContent = "Challenge failed · rematch or menu";
+        }
+      }
       this.sfx.whistle();
+      this.sfx.crowd(1.6);
+      this.buzz([40, 80, 50]);
     }
+  }
+
+  snapPlayer(p) {
+    return {
+      x: p.x,
+      y: p.y,
+      vx: p.vx,
+      vy: p.vy,
+      swing: p.swing,
+      swinging: p.swinging,
+      swingRate: p.swingRate,
+      charge: p.charge,
+      charging: p.charging,
+      chargeDir: p.chargeDir,
+      crouch: p.crouch,
+      twist: p.twist,
+      hand: p.hand,
+      shotKind: p.shotKind,
+    };
+  }
+
+  recordFrame() {
+    const b = this.ball;
+    this.tape.push({
+      ball: {
+        x: b.x,
+        y: b.y,
+        z: b.z,
+        vx: b.vx,
+        vy: b.vy,
+        vz: b.vz,
+        live: b.live,
+        held: b.held,
+        trail: b.trail.map((t) => ({ x: t.x, y: t.y, z: t.z })),
+      },
+      players: this.allPlayers().map((p) => this.snapPlayer(p)),
+      camX: this.camX,
+    });
+    if (this.tape.length > 78) this.tape.shift();
+  }
+
+  applyFrame(f) {
+    Object.assign(this.ball, f.ball);
+    this.ball.trail = f.ball.trail.map((t) => ({ x: t.x, y: t.y, z: t.z }));
+    const ps = this.allPlayers();
+    for (let i = 0; i < ps.length && i < f.players.length; i++) Object.assign(ps[i], f.players[i]);
+    this.camX = f.camX;
+  }
+
+  beginReplay(label) {
+    this.phase = "replay";
+    this.replay = { frames: this.tape.slice(), i: 0, label };
+    this.flash(label, 1.35);
+    this.sfx.crowd(1.15);
+  }
+
+  stepReplay(dt) {
+    const r = this.replay;
+    if (!r) {
+      this.phase = "dead";
+      this.deadT = 0.4;
+      this.checkWin();
+      return;
+    }
+    r.i += dt * 22;
+    const frames = r.frames;
+    if (r.i >= frames.length - 1) {
+      this.replay = null;
+      this.phase = "dead";
+      this.deadT = 0.6;
+      this.checkWin();
+      return;
+    }
+    this.applyFrame(frames[Math.min(frames.length - 1, r.i | 0)]);
   }
 
   syncHud() {
     $("pts-near").textContent = String(this.match.near);
     $("pts-far").textContent = String(this.match.far);
-    $("score-call").textContent = `${this.match.near} – ${this.match.far}`;
-    const who = this.match.server === "near" ? "YOU" : this.mode === "p2" ? "P2" : "CPU";
+    if (this.isDoubles()) {
+      const n = this.match.startOneServe ? 2 : this.match.serverNum;
+      $("score-call").textContent = `${this.match.near} – ${this.match.far} – ${n}`;
+    } else {
+      $("score-call").textContent = `${this.match.near} – ${this.match.far}`;
+    }
+    const who =
+      this.match.server === "near"
+        ? this.isDoubles() && this.match.serverNum === 2
+          ? "PARTNER"
+          : "YOU"
+        : this.mode === "p2"
+          ? "P2"
+          : this.isDoubles() && this.match.serverNum === 2
+            ? "CPU 2"
+            : "CPU";
     const court = this.evenScore() ? "right / even" : "left / odd";
     $("serve-tag").textContent = `${who} serving · ${court}`;
     $("chip-serve").classList.toggle("on", this.match.serveBounced);
@@ -1447,6 +1780,11 @@ export class Game {
     }
     this.updateFx(dt);
 
+    if (this.phase === "replay") {
+      this.stepReplay(dt);
+      return;
+    }
+
     if (this.phase === "dead") {
       this.deadT -= dt;
       if (this.deadT <= 0) this.resetPoint();
@@ -1461,10 +1799,12 @@ export class Game {
     this.updatePlayers(dt);
     if (this.phase === "rally" || this.ball.held) this.updateBall(dt);
 
-    if (this.phase === "serve" && this.screen === "play" && this.match.server === "near") {
+    if (this.phase === "serve" && this.screen === "play" && this.serverPlayer() === this.near) {
       this.toastT = Math.max(this.toastT, 0.2);
       if (!$("toast").classList.contains("show")) this.toast("Hold SPACE / click to serve underhand");
     }
+
+    if (this.phase === "rally" && !this.demo && this.screen === "play") this.recordFrame();
   }
 
   draw() {
@@ -1484,12 +1824,34 @@ export class Game {
       { y: NET_Y, draw: () => this.drawNet(ctx) },
       { y: this.ball.y, draw: () => this.drawBall(ctx) },
     ];
+    if (this.isDoubles()) {
+      sprites.push(
+        { y: this.nearB.y, draw: () => this.drawPlayer(ctx, this.nearB) },
+        { y: this.farB.y, draw: () => this.drawPlayer(ctx, this.farB) }
+      );
+    }
     sprites.sort((a, b) => b.y - a.y);
     for (const s of sprites) s.draw();
 
     this.drawFx(ctx);
     if (this.near.charging && this.screen === "play") this.drawCharge(ctx, this.near);
     if (this.far.charging && this.mode === "p2" && this.screen === "play") this.drawCharge(ctx, this.far);
+    if (this.phase === "replay") this.drawReplayMark(ctx);
+  }
+
+  drawReplayMark(ctx) {
+    ctx.save();
+    const label = this.replay?.label ? `REPLAY · ${this.replay.label}` : "REPLAY";
+    const y = Math.max(108, this.h * 0.15);
+    roundRect(ctx, this.w / 2 - 108, y, 216, 36, 10);
+    ctx.fillStyle = "rgba(7,24,44,0.72)";
+    ctx.fill();
+    ctx.fillStyle = "#d4e157";
+    ctx.font = "800 16px Outfit, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(label, this.w / 2, y + 18);
+    ctx.restore();
   }
 
   spawnBurst(x, y, z, color, n) {

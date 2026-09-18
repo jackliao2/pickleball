@@ -6,6 +6,9 @@ Thumbs.db
 package.json
 package-lock.json
 _verify.mjs
+_verify_mobile.mjs
+_verify_roster.mjs
+_net_sim.mjs
 _shots/
 
 .vercel

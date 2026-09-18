@@ -229,6 +229,26 @@ canvas {
 .stat-row input[type="range"] { width: 100%; accent-color: var(--yellow); }
 .stat-row .n { font-family: "Barlow Condensed", sans-serif; font-size: 18px; font-weight: 800; text-align: right; }
 
+.challenge-list { display: flex; flex-direction: column; gap: 8px; margin: 12px 0 16px; }
+.challenge-list button {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  font: 700 15px Outfit, sans-serif;
+  color: var(--paper);
+  background: rgba(255,255,255,0.06);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px 14px;
+  cursor: pointer;
+  text-align: left;
+}
+.challenge-list button:hover { filter: brightness(1.08); }
+.challenge-list button.locked { opacity: 0.4; cursor: not-allowed; }
+.challenge-list button.done { border-color: rgba(212,225,87,0.5); }
+.challenge-list .tag { font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--yellow); }
+
 @media (max-width: 700px) {
   .roster-grid { grid-template-columns: 1fr; }
 }
