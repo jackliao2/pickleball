@@ -644,27 +644,26 @@ export class Game {
 
   launchTo(b, tx, ty, t, noise) {
     tx = clamp(tx + rand(-noise, noise), 1.4, 18.6);
-    ty = ty + rand(-noise, noise) * 0.4;
-    if (ty >= NET_Y) ty = clamp(ty, NET_Y + 4.4, 42.6);
-    else ty = clamp(ty, 1.4, NET_Y - 4.4);
+    ty = ty + rand(-noise, noise) * 0.3;
+    if (b.y < NET_Y) ty = clamp(ty, NET_Y + 5, 42.4);
+    else ty = clamp(ty, 1.6, NET_Y - 5);
 
-    const z0 = Math.max(b.z, 0.95);
-    t = clamp(t, 0.55, 1.85);
-    const need = 3.35;
+    const z0 = Math.max(b.z, 1.05);
+    t = clamp(t, 0.72, 2.05);
+    const need = 3.4;
     let vx = 0,
       vy = 0,
       vz = 0;
-    for (let i = 0; i < 12; i++) {
+    for (let i = 0; i < 16; i++) {
       vx = (tx - b.x) / t;
       vy = (ty - b.y) / t;
       vz = 0.5 * G * t - z0 / t;
       if (this.heightAtNet(b.y, z0, vy, vz) >= need) break;
-      t = Math.min(1.85, t + 0.12);
-    }
-    const zNet = this.heightAtNet(b.y, z0, vy, vz);
-    if (zNet < need && Math.abs(vy) > 0.08) {
-      const tNet = (NET_Y - b.y) / vy;
-      if (tNet > 0.05) vz = (need - z0 + 0.5 * G * tNet * tNet) / tNet;
+      t = Math.min(2.05, t + 0.1);
+      if (i > 5) {
+        if (b.y > NET_Y) ty = Math.max(1.6, ty - 0.55);
+        else ty = Math.min(42.4, ty + 0.55);
+      }
     }
     b.z = z0;
     b.vx = vx;
