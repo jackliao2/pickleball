@@ -1,0 +1,12 @@
+{
+  "name": "Play Pickleball",
+  "short_name": "Pickleball",
+  "description": "Free pickleball in your browser. Real kitchen, two-bounce rule, instant play.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#07182c",
+  "theme_color": "#0c2744",
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}

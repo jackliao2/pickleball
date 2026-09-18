@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Play Pickleball Online Free — Real Kitchen, Two-Bounce, Instant Play</title>
+  <meta name="description" content="Play pickleball in your browser. Regulation 20×44 court, kitchen (non-volley zone), two-bounce rule, underhand serve, and side-out scoring to 11. Free, no download, vs CPU or 2 players." />
+  <meta name="keywords" content="pickleball game online, play pickleball online, free pickleball game, pickleball" />
+  <link rel="canonical" href="https://playpickleball.vercel.app/" />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Play Pickleball Online Free" />
+  <meta property="og:description" content="Regulation kitchen, two-bounce rule, underhand serve. Instant play in your browser." />
+  <meta property="og:image" content="/og.jpg" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="theme-color" content="#0c2744" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "VideoGame",
+    "name": "Play Pickleball",
+    "description": "Free browser pickleball game with regulation court, kitchen, two-bounce rule, and side-out scoring.",
+    "playMode": ["SinglePlayer", "MultiPlayer"],
+    "applicationCategory": "Game",
+    "genre": "Sports",
+    "gamePlatform": "Web Browser",
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+  }
+  </script>
+</head>
+<body>
+  <div id="app">
+    <canvas id="c"></canvas>
+
+    <header id="hud" hidden>
+      <div class="sb">
+        <div class="sb-side">
+          <span class="sb-name" id="name-near">YOU</span>
+          <span class="sb-pts" id="pts-near">0</span>
+        </div>
+        <div class="sb-mid">
+          <div class="sb-call" id="score-call">0 – 0</div>
+          <div class="sb-serve" id="serve-tag">YOU serving</div>
+        </div>
+        <div class="sb-side right">
+          <span class="sb-pts" id="pts-far">0</span>
+          <span class="sb-name" id="name-far">CPU</span>
+        </div>
+      </div>
+      <div class="chips">
+        <span class="chip" id="chip-serve">Serve bounce</span>
+        <span class="chip" id="chip-return">Return bounce</span>
+        <span class="chip chip-rally" id="chip-rally">Rally 0</span>
+      </div>
+    </header>
+
+    <div id="banner"></div>
+    <div id="toast"></div>
+
+    <div id="menu" class="overlay">
+      <div class="card">
+        <p class="kicker">Free · Instant play · No download</p>
+        <h1>Pickleball</h1>
+        <p class="lede">A real court. A real kitchen. The two-bounce rule. Side-out scoring to 11. This is pickleball, not tennis with a green ball.</p>
+        <div class="diff" role="group" aria-label="Difficulty">
+          <button type="button" data-diff="easy">Easy</button>
+          <button type="button" data-diff="normal" class="on">Normal</button>
+          <button type="button" data-diff="hard">Hard</button>
+        </div>
+        <button type="button" class="btn primary" id="btn-cpu">Play vs CPU</button>
+        <button type="button" class="btn" id="btn-p2">2 Players · same keyboard</button>
+        <button type="button" class="btn ghost" id="btn-howto">How pickleball works</button>
+        <p class="hint" id="ctrl-hint">Move WASD or mouse · Hold Space / click to swing · Tap for a dink, hold for a drive</p>
+      </div>
+    </div>
+
+    <div id="howto" class="overlay" hidden>
+      <div class="card wide">
+        <h2>How this match is scored</h2>
+        <ul class="rules">
+          <li><strong>Court.</strong> 20 × 44 ft, same as official USA Pickleball. The kitchen (non-volley zone) is 7 ft on each side of the net. Net is 36 in at the sidelines and 34 in at the center.</li>
+          <li><strong>Serve.</strong> Underhand, from behind the baseline, diagonally into the opposite service box. The serve cannot land in the kitchen or on the kitchen line. Even score = right court, odd = left.</li>
+          <li><strong>Two-bounce rule.</strong> The serve must bounce. The return must bounce. After that, volleys are legal.</li>
+          <li><strong>Kitchen.</strong> You may stand in the kitchen. You may not volley while in it, on the line, or falling into it. A bounced ball in the kitchen is a dink — that’s the game.</li>
+          <li><strong>Scoring.</strong> Traditional side-out: only the server scores. Game to 11, win by 2. A server fault is a side-out, not a point for the receiver.</li>
+          <li><strong>Net cord.</strong> A serve that clips the net and still lands in is live (current USA Pickleball: no let serve).</li>
+        </ul>
+        <h3>Controls</h3>
+        <p class="hint"><strong>You (near side):</strong> WASD or mouse to move. Space or click to swing — tap a dink, hold a drive, hold + W for a lob.<br />
+        <strong>Player 2:</strong> Arrow keys, Enter to swing, ArrowUp while charging to lob.</p>
+        <button type="button" class="btn primary" id="btn-howto-close">Back</button>
+      </div>
+    </div>
+
+    <div id="pause" class="overlay" hidden>
+      <div class="card">
+        <h2>Paused</h2>
+        <button type="button" class="btn primary" id="btn-resume">Resume</button>
+        <button type="button" class="btn" id="btn-menu">Main menu</button>
+      </div>
+    </div>
+
+    <div id="over" class="overlay" hidden>
+      <div class="card">
+        <p class="kicker" id="over-kicker">Match</p>
+        <h2 id="over-title">You win</h2>
+        <p class="lede" id="over-sub">11 – 9</p>
+        <button type="button" class="btn primary" id="btn-rematch">Rematch</button>
+        <button type="button" class="btn" id="btn-over-menu">Main menu</button>
+      </div>
+    </div>
+
+    <div id="touch" hidden>
+      <div id="stick"><div id="knob"></div></div>
+      <button type="button" id="btn-swing">SWING</button>
+    </div>
+
+    <div id="toolbar">
+      <button type="button" id="btn-pause" title="Pause">II</button>
+      <button type="button" id="btn-mute" title="Sound">♪</button>
+      <button type="button" id="btn-full" title="Fullscreen">Fullscreen</button>
+    </div>
+  </div>
+  <script type="module" src="/js/game.js"></script>
+</body>
+</html>
