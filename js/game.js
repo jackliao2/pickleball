@@ -14,11 +14,11 @@ const DIFF = {
 };
 
 const STAT_LIST = [
-  ["speed", "Speed", "How fast you run"],
-  ["power", "Power", "Drive and speed-up pace"],
-  ["angle", "Angle", "Tighter aim, less spray"],
-  ["serve", "Serve", "Serve depth, pace, and accuracy"],
-  ["hands", "Hands", "Kitchen range and recovery"],
+  ["speed", "Speed", "Foot speed around the court"],
+  ["power", "Power", "Pace on drives and speed-ups"],
+  ["angle", "Angle", "Keeps drives in; low angle sprays out"],
+  ["serve", "Serve", "Depth, bite, and fewer faults"],
+  ["hands", "Hands", "Kitchen volleys and recovery"],
   ["reach", "Reach", "How far the paddle covers"],
 ];
 const STAT_IDS = STAT_LIST.map((s) => s[0]);
@@ -813,13 +813,13 @@ export class Game {
     const st = emptyStats();
     for (const id of STAT_IDS) st[id] = clamp(Number(build?.[id]) || 6, 2, 10);
     p.stats = st;
-    p.baseSpeed = 5.1 + st.speed * 0.8;
+    p.baseSpeed = 7.6 + st.speed * 0.4;
     p.speed = p.baseSpeed;
-    p.powerMul = 0.62 + st.power * 0.08;
-    p.aimSpread = lerp(3.6, 0.2, st.angle / 10);
+    p.powerMul = 0.58 + st.power * 0.085;
+    p.aimSpread = lerp(4.4, 0.16, st.angle / 10);
     p.serveSkill = st.serve;
     p.hands = st.hands;
-    p.reachFt = 1.7 + st.reach * 0.3;
+    p.reachFt = 1.5 + st.reach * 0.38;
   }
 
   inReach(p, x, y, z) {
@@ -831,9 +831,9 @@ export class Game {
     const kit = Math.abs(p.y - (p.side === "near" ? 15 : 29)) < 3.4;
     const h = (p.hands || 6) / 10;
     const volleyHere = kit && !bouncedHere;
-    let fwdMax = reach + 0.55 + (kit ? 0.12 + h * 0.38 : 0) + (bouncedHere ? 0.4 : 0) + (volleyHere ? 0.9 : 0);
-    let sideMax = reach * 1.08 + (kit ? 0.08 + h * 0.28 : 0) + (bouncedHere ? 0.28 : 0) + (volleyHere ? 0.55 : 0);
-    const backMax = (bouncedHere ? 2.1 : 1.2) + (kit ? h * 0.15 : 0) + (volleyHere ? 0.45 : 0);
+    let fwdMax = reach + 0.45 + (kit ? 0.06 + h * 0.85 : 0) + (bouncedHere ? 0.35 : 0) + (volleyHere ? 0.5 : 0);
+    let sideMax = reach * 1.05 + (kit ? 0.06 + h * 0.55 : 0) + (bouncedHere ? 0.25 : 0) + (volleyHere ? 0.4 : 0);
+    const backMax = (bouncedHere ? 2.0 : 1.15) + (kit ? h * 0.35 : 0) + (volleyHere ? 0.35 : 0);
     if (z > 4.9) {
       fwdMax *= 0.78;
       sideMax *= 0.78;
@@ -878,7 +878,7 @@ export class Game {
     const hopped = b.lastBounceSide === p.side;
     if (!hopped) return false;
     const kit = Math.abs(p.y - (p.side === "near" ? 15 : 29)) < 3.4;
-    const look = 0.05 + (p.hands || 6) * 0.015 + (kit ? 0.035 : 0) + 0.1;
+    const look = 0.03 + (p.hands || 6) * 0.028 + (kit ? 0.05 : 0) + (hopped ? 0.08 : 0);
     let x = b.x;
     let y = b.y;
     let z = b.z;
@@ -1444,9 +1444,8 @@ export class Game {
     const receiver = p.side === "near" ? "far" : "near";
     const serve = p.serveSkill ?? 6;
     const s = serve / 10;
-    const deep = receiver === "far" ? lerp(32.6, 41.2, s) : lerp(11.4, 2.8, s);
-    const ty = receiver === "far" ? rand(deep - 2.1, Math.min(42.2, deep + 1.8)) : rand(Math.max(1.8, deep - 1.8), deep + 2.1);
-    const t = lerp(1.40, 1.08, power * lerp(0.5, 1, s));
+    const deep = receiver === "far" ? lerp(30.4, 42.8, s) : lerp(13.6, 1.2, s);
+    const t = lerp(1.52, 0.92, power * lerp(0.38, 1, s));
     this.ball.held = false;
     this.ball.live = true;
     this.ball.x = p.x + 0.4;
@@ -1456,9 +1455,9 @@ export class Game {
     p.hand = 1;
     const boxL = even ? (receiver === "far" ? 0 : 10) : receiver === "far" ? 10 : 0;
     const boxR = boxL + 10;
-    const aimed = clamp(20 - p.x, boxL + 1.4, boxR - 1.4);
-    const xSpread = lerp(1.15, 0.08, s);
-    this.launchTo(this.ball, aimed + rand(-xSpread, xSpread), ty, t, lerp(0.55, 0.05, s), "serve", p);
+    const aimed = clamp(20 - p.x, boxL + 1.1, boxR - 1.1);
+    this.launchTo(this.ball, aimed, deep, t, lerp(2.6, 0.1, s), "serve", p);
+    this.ball.serveBite = s;
     this.ball.lastHit = p.side;
     this.phase = "rally";
     this.rallyLen = 1;
@@ -1537,8 +1536,8 @@ export class Game {
     const atKitchen = Math.abs(p.y - kitLine) < 3.1;
     const hands = p.hands || 6;
     p.swingRate = atKitchen
-      ? 5.4 + hands * 0.12
-      : (kind === "speedup" || kind === "smash" ? 3.15 : 2.0) + hands * 0.035;
+      ? 3.2 + hands * 0.34
+      : (kind === "speedup" || kind === "smash" ? 3.0 : 1.85) + hands * 0.1;
     if (kind === "speedup" || kind === "smash") this.shake = 5;
 
     const land = this.isHuman(p) ? this.humanLand(p, kind, power, opp) : this.cpuLand(p, b, kind, opp);
@@ -1547,14 +1546,10 @@ export class Game {
     const flight = this.shotFlight(p, kind, power);
 
     const cpu = this.isCpuSide(p);
-    const spread = p.aimSpread ?? lerp(3.6, 0.2, (p.stats?.angle ?? 6) / 10);
+    const spread = p.aimSpread ?? lerp(4.4, 0.16, (p.stats?.angle ?? 6) / 10);
     let noise = cpu
-      ? DIFF[this.diff].err * 0.7 * spread * (0.55 + d * 0.06)
-      : spread * (0.55 + d * 0.05);
-    if (cpu) {
-      tx = clamp(tx, 3.6, 16.4);
-      ty = p.side === "far" ? clamp(ty, 3.2, 17.0) : clamp(ty, 27.0, 40.8);
-    }
+      ? DIFF[this.diff].err * 0.85 * spread
+      : spread * 0.72;
     p.shotKind = kind;
     this.lastKind = kind;
     this.launchTo(b, tx, ty, flight, noise, kind, p);
@@ -1578,8 +1573,6 @@ export class Game {
   }
 
   launchTo(b, tx, ty, t, noise, style, p) {
-    tx = clamp(tx + rand(-noise, noise), 1.6, 18.4);
-    ty = ty + rand(-noise, noise) * 0.22;
     const attack = style === "speedup" || style === "smash";
     if (attack) {
       if (b.y < NET_Y) ty = clamp(ty, NET_Y + 3.3, 33);
@@ -1587,11 +1580,16 @@ export class Game {
     } else if (style === "dink") {
       if (b.y < NET_Y) ty = clamp(ty, NET_Y + 4.2, NET_Y + 7.1);
       else ty = clamp(ty, NET_Y - 7.1, NET_Y - 4.2);
-    } else if (b.y < NET_Y) ty = clamp(ty, NET_Y + 5, 42.2);
-    else ty = clamp(ty, 1.8, NET_Y - 5);
+    } else if (style !== "serve") {
+      if (b.y < NET_Y) ty = clamp(ty, NET_Y + 5, 43);
+      else ty = clamp(ty, 1, NET_Y - 5);
+    }
+    const nY = noise * (style === "dink" ? 0.35 : 1);
+    tx = tx + rand(-noise, noise);
+    ty = ty + rand(-nY, nY);
 
     const pow = p?.powerMul || 1;
-    const punch = clamp((pow - 0.62) / 0.8, 0, 1);
+    const punch = clamp((pow - 0.58) / 0.85, 0, 1);
     const z0 = Math.max(b.z, attack ? 1.7 : 1.15);
     const dinkish = style === "dink" || style === "drop" || style === "lob";
     let tMin, tMax;
@@ -1979,12 +1977,18 @@ export class Game {
         const speed = Math.hypot(b.vx, b.vy, vz0);
         const e = lerp(0.52, 0.66, clamp(speed / 30, 0, 1));
         let outVz = Math.abs(vz0) * e;
-        const minPeak = speed < 9 ? 1.9 : 2.7;
+        let minPeak = speed < 9 ? 1.9 : 2.7;
+        let slip = 0.8;
+        if (!this.match.serveBounced && b.serveBite != null) {
+          minPeak = lerp(3.15, 1.45, b.serveBite);
+          slip = lerp(0.64, 0.92, b.serveBite);
+          outVz *= lerp(1.12, 0.82, b.serveBite);
+        }
         const minVz = Math.sqrt(2 * G * minPeak);
         if (outVz > 0.35) outVz = Math.max(outVz, minVz);
         b.vz = outVz;
-        b.vx *= 0.8;
-        b.vy *= 0.8;
+        b.vx *= slip;
+        b.vy *= slip;
         if (b.vz < 0.4) b.vz = 0;
         this.onBounce();
         if (this.phase !== "rally") return;
