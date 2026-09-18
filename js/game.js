@@ -616,14 +616,24 @@ export class Game {
       flight = lerp(0.72, 0.48, power);
     }
 
-    const noise = (p === this.far && this.mode === "cpu" ? DIFF[this.diff].err : 0.55) * (0.4 + d * 0.15);
+    let noise = (p === this.far && this.mode === "cpu" ? DIFF[this.diff].err : 0.55) * (0.4 + d * 0.15);
+    if (p === this.far && this.mode === "cpu") {
+      tx = clamp(tx, 3.2, 16.8);
+      if (p.side === "far") ty = clamp(ty, 1.8, 20.2);
+      else ty = clamp(ty, 23.8, 42.2);
+      noise *= 0.4;
+    }
     this.launchTo(b, tx, ty, flight, noise);
     b.lastHit = p.side;
     b.lastBounceSide = null;
     b.bouncesSide = 0;
     this.rallyLen += 1;
     this.sfx.hit(power);
-    if (navigator.vibrate) navigator.vibrate(12);
+    try {
+      navigator.vibrate?.(12);
+    } catch {
+      /* ignore */
+    }
   }
 
   launchTo(b, tx, ty, t, noise) {
