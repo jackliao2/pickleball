@@ -694,6 +694,7 @@ export class Game {
       this.stick.active = true;
       this.touch = true;
       $("touch").hidden = false;
+      $("keys-hint")?.classList.add("touch");
       set(t.clientX, t.clientY);
     };
     const off = () => {
@@ -716,6 +717,7 @@ export class Game {
       e.preventDefault();
       this.touch = true;
       $("touch").hidden = false;
+      $("keys-hint")?.classList.add("touch");
       if (this.phase === "replay") {
         this.skipReplay();
         return;
@@ -728,6 +730,7 @@ export class Game {
       () => {
         this.touch = true;
         $("touch").hidden = false;
+        $("keys-hint")?.classList.add("touch");
       },
       { once: true }
     );
@@ -2064,7 +2067,7 @@ export class Game {
       if (!this.match.returnBounced && side === this.match.server) {
         this.match.returnBounced = true;
         this.syncHud();
-        this.toast("Kitchen: high ball = hold yellow to 抽. Low ball = let it bounce, then tap dink");
+        this.toast("Kitchen: high ball = hold Space (yellow) to speed-up. Low ball = let it bounce, then tap");
       }
     }
     this.tryPendingHit();
