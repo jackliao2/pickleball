@@ -32,12 +32,54 @@ const PRESETS = {
   cannon: { name: "Cannon", speed: 4, power: 9, angle: 4, serve: 10, hands: 4, reach: 5 },
 };
 const TOURNAMENT = [
-  { round: "Qualifier", name: "Pat Nguyen", style: "Club rec", preset: "touch", diff: "easy", budget: 28 },
-  { round: "Round of 8", name: "Sam Ortiz", style: "All-court", preset: "balanced", diff: "easy", budget: 32 },
-  { round: "Quarterfinal", name: "Jordan Blake", style: "Athlete", preset: "athlete", diff: "normal", budget: 36 },
-  { round: "Semifinal", name: "Alex Kim", style: "Kitchen", preset: "kitchen", diff: "normal", budget: 36 },
-  { round: "Final", name: "Morgan Hale", style: "Banger", preset: "banger", diff: "hard", budget: 40 },
-  { round: "Championship", name: "Casey Voss", style: "Pro", preset: "cannon", diff: "hard", budget: 44 },
+  {
+    round: "Qualifier",
+    name: "Pat Nguyen",
+    style: "Club rec",
+    blurb: "Soft dinks, slow feet, almost never attacks. A warm-up.",
+    diff: "easy",
+    stats: { speed: 3, power: 2, angle: 5, serve: 3, hands: 4, reach: 4 },
+  },
+  {
+    round: "Round of 8",
+    name: "Sam Ortiz",
+    style: "All-court",
+    blurb: "Gets the ball back. Little pace. Keep it deep and you are fine.",
+    diff: "easy",
+    stats: { speed: 4, power: 3, angle: 5, serve: 4, hands: 4, reach: 4 },
+  },
+  {
+    round: "Quarterfinal",
+    name: "Jordan Blake",
+    style: "Athlete",
+    blurb: "Runs the court, still learning the kitchen. Medium pace, not a banger.",
+    diff: "easy",
+    stats: { speed: 5, power: 4, angle: 5, serve: 4, hands: 5, reach: 5 },
+  },
+  {
+    round: "Semifinal",
+    name: "Alex Kim",
+    style: "Kitchen",
+    blurb: "Lives at the NVZ. Soft hands, blocks, then speed-ups when you pop it up.",
+    diff: "normal",
+    stats: { speed: 5, power: 4, angle: 7, serve: 4, hands: 7, reach: 5 },
+  },
+  {
+    round: "Final",
+    name: "Morgan Hale",
+    style: "Banger",
+    blurb: "Big drives and body speed-ups. Weak on touch. Reset to the kitchen.",
+    diff: "hard",
+    stats: { speed: 7, power: 8, angle: 4, serve: 6, hands: 4, reach: 5 },
+  },
+  {
+    round: "Championship",
+    name: "Casey Voss",
+    style: "Pro",
+    blurb: "Deep serves, heavy pace, fast hands. Championship form.",
+    diff: "hard",
+    stats: { speed: 8, power: 8, angle: 6, serve: 8, hands: 7, reach: 6 },
+  },
 ];
 const TOURNEY_KEY = "pb-tourney-v1";
 
@@ -437,6 +479,8 @@ export class Game {
     $("btn-challenge").onclick = () => this.openChallenge();
     $("btn-challenge-back").onclick = () => this.closeChallenge();
     $("btn-next-challenge").onclick = () => this.playNextChallenge();
+    $("btn-scout-play").onclick = () => this.startChallenge(this.scoutIndex);
+    $("btn-scout-back").onclick = () => this.closeScout();
     $("btn-p2").onclick = () => this.openRoster("p2");
     $("btn-start-match").onclick = () => this.confirmRoster();
     $("btn-roster-back").onclick = () => this.closeRoster();
@@ -596,6 +640,7 @@ export class Game {
     $("roster").hidden = true;
     $("howto").hidden = true;
     $("challenge").hidden = true;
+    $("scout").hidden = true;
     $("pause").hidden = true;
     $("over").hidden = true;
     $("hud").hidden = false;
@@ -934,6 +979,7 @@ export class Game {
     $("over").hidden = true;
     $("howto").hidden = true;
     $("challenge").hidden = true;
+    $("scout").hidden = true;
     $("hud").hidden = true;
     this.match = this.freshMatch();
     this.resetPoint();
@@ -1009,6 +1055,7 @@ export class Game {
     $("menu").hidden = true;
     $("roster").hidden = true;
     $("howto").hidden = true;
+    $("scout").hidden = true;
     $("challenge").hidden = false;
     this.renderChallengeList();
   }
@@ -1020,34 +1067,70 @@ export class Game {
 
   renderChallengeList() {
     const unlocked = this.gauntletCleared();
-    const list = $("challenge-list");
-    list.innerHTML = "";
+    const map = $("tourney-map");
+    map.innerHTML = "";
+    const you = document.createElement("div");
+    you.className = "map-you";
+    you.innerHTML = `<span class="dot"></span><span>You · start</span>`;
+    map.appendChild(you);
     TOURNAMENT.forEach((rnd, i) => {
       const btn = document.createElement("button");
       btn.type = "button";
+      btn.className = "map-node";
       const done = i < unlocked;
       const lock = i > unlocked;
+      const now = i === unlocked || (unlocked >= TOURNAMENT.length && i === TOURNAMENT.length - 1);
       btn.classList.toggle("done", done);
       btn.classList.toggle("locked", lock);
-      const tag = done ? "Won" : lock ? "Locked" : "Play";
+      btn.classList.toggle("now", now && !lock);
+      const tag = done ? "Won" : lock ? "Locked" : "You are here";
       btn.innerHTML = `<span class="round-meta"><strong>${rnd.round}</strong><em>${rnd.name} · ${rnd.style}</em></span><span class="tag">${tag}</span>`;
-      if (!lock) btn.onclick = () => this.startChallenge(i);
-      list.appendChild(btn);
+      if (!lock) btn.onclick = () => this.openScout(i);
+      map.appendChild(btn);
     });
     const n = unlocked;
     $("challenge-lede").textContent =
       n >= TOURNAMENT.length
-        ? "Champion. Replay any round."
-        : `${n} / ${TOURNAMENT.length} rounds won. Opponents get stronger. Progress saves on this device.`;
+        ? "Champion. Tap any round to scout and replay."
+        : `${n} / ${TOURNAMENT.length} won. Climb the map — each opponent is stronger.`;
+  }
+
+  openScout(i) {
+    const rnd = TOURNAMENT[i];
+    this.scoutIndex = i;
+    $("challenge").hidden = true;
+    $("over").hidden = true;
+    $("scout").hidden = false;
+    $("scout-kicker").textContent = rnd.round;
+    $("scout-title").textContent = rnd.name;
+    $("scout-vs").textContent = `YOU vs ${rnd.name}`;
+    $("scout-blurb").textContent = `${rnd.style}. ${rnd.blurb}`;
+    $("scout-diff").textContent = `Difficulty · ${rnd.diff}`;
+    const box = $("scout-stats");
+    box.innerHTML = "";
+    const st = rnd.stats;
+    STAT_LIST.forEach(([id, label]) => {
+      const row = document.createElement("div");
+      row.className = "scout-stat";
+      const v = st[id] || 0;
+      row.innerHTML = `<span>${label} ${v}</span><div class="scout-bar"><i style="width:${(v / 10) * 100}%"></i></div>`;
+      box.appendChild(row);
+    });
+  }
+
+  closeScout() {
+    $("scout").hidden = true;
+    $("challenge").hidden = false;
+    this.renderChallengeList();
   }
 
   startChallenge(i) {
     this.challengeIndex = i;
     const rnd = TOURNAMENT[i];
-    const pre = PRESETS[rnd.preset];
     this.diff = rnd.diff;
-    this.oppBuild = { ...scaleBuild(pre, rnd.budget), name: rnd.name };
+    this.oppBuild = { ...cloneStats(rnd.stats), name: rnd.name };
     $("challenge").hidden = true;
+    $("scout").hidden = true;
     this.startMatch("challenge");
     this.flash(rnd.round, 1.15);
   }
@@ -1059,7 +1142,8 @@ export class Game {
       this.openChallenge();
       return;
     }
-    this.startChallenge(next);
+    $("over").hidden = true;
+    this.openScout(next);
   }
 
   buzz(ms) {

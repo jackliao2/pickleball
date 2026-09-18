@@ -119,7 +119,7 @@
           <li><strong>Kitchen.</strong> Stand just behind the kitchen line after the two-bounce. Tap to dink. Hold to speed-up (抽球) at the opponent’s body. You may not volley while in the kitchen or on the line.</li>
           <li><strong>Scoring.</strong> Rally scoring: win the rally, get the point. Opponent hits out, nets, or misses — you score. If they were serving, you also take the serve (doubles: first fault is second server, then side-out). Game to 11, win by 2.</li>
           <li><strong>Doubles.</strong> You plus a kitchen partner vs two CPUs. The score is called n – f – server. The first sequence of the game is one serve only (0-0-2); after that both players serve.</li>
-          <li><strong>Tournament.</strong> Six rounds, weak to strong (club rec → pro). Win to unlock the next match. Progress saves on this device.</li>
+          <li><strong>Tournament.</strong> Climb the map, weak to strong. Scout each opponent’s style before you play. Early rounds have fewer stat points. Progress saves on this device.</li>
           <li><strong>Net cord.</strong> A serve that clips the net and still lands in is live (current USA Pickleball: no let serve).</li>
         </ul>
         <h3>Controls</h3>
@@ -136,9 +136,22 @@
       <div class="card wide">
         <p class="kicker">Single elimination</p>
         <h2>Tournament</h2>
-        <p class="lede" id="challenge-lede">Six rounds, weak to strong. Win to unlock the next opponent. Progress saves on this device.</p>
-        <div id="challenge-list" class="challenge-list"></div>
+        <p class="lede" id="challenge-lede">Climb the map. Weak to strong. Tap a round to scout the opponent.</p>
+        <div id="tourney-map" class="tourney-map"></div>
         <button type="button" class="btn ghost" id="btn-challenge-back">Back</button>
+      </div>
+    </div>
+
+    <div id="scout" class="overlay" hidden>
+      <div class="card">
+        <p class="kicker" id="scout-kicker">Quarterfinal</p>
+        <h2 id="scout-title">Jordan Blake</h2>
+        <p class="lede" id="scout-vs">YOU vs Jordan Blake</p>
+        <p class="hint" id="scout-blurb"></p>
+        <p class="scout-diff" id="scout-diff"></p>
+        <div id="scout-stats" class="scout-stats"></div>
+        <button type="button" class="btn primary" id="btn-scout-play">Play match</button>
+        <button type="button" class="btn ghost" id="btn-scout-back">Back to map</button>
       </div>
     </div>
 

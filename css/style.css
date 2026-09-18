@@ -229,28 +229,103 @@ canvas {
 .stat-row input[type="range"] { width: 100%; accent-color: var(--yellow); }
 .stat-row .n { font-family: "Barlow Condensed", sans-serif; font-size: 18px; font-weight: 800; text-align: right; }
 
-.challenge-list { display: flex; flex-direction: column; gap: 8px; margin: 12px 0 16px; }
-.challenge-list button {
+.tourney-map {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 0;
+  margin: 8px 0 16px;
+  padding-left: 8px;
+}
+.map-you {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 4px 14px;
+  font: 800 13px Outfit, sans-serif;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--yellow);
+}
+.map-you .dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--yellow);
+  box-shadow: 0 0 0 4px rgba(212, 225, 87, 0.2);
+  flex-shrink: 0;
+}
+.map-you::after {
+  content: "";
+  position: absolute;
+  left: 10px;
+  bottom: 100%;
+  width: 2px;
+  height: 10px;
+  background: rgba(212, 225, 87, 0.35);
+}
+.map-node {
+  position: relative;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 10px;
   width: 100%;
-  font: 700 15px Outfit, sans-serif;
-  color: var(--paper);
-  background: rgba(255,255,255,0.06);
+  margin: 0 0 0 6px;
+  padding: 12px 14px 12px 22px;
   border: 1px solid var(--line);
   border-radius: 12px;
-  padding: 12px 14px;
-  cursor: pointer;
+  background: rgba(255,255,255,0.06);
+  color: var(--paper);
+  font: 700 15px Outfit, sans-serif;
   text-align: left;
+  cursor: pointer;
 }
-.challenge-list button:hover { filter: brightness(1.08); }
-.challenge-list button.locked { opacity: 0.4; cursor: not-allowed; }
-.challenge-list button.done { border-color: rgba(212,225,87,0.5); }
-.challenge-list .tag { font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--yellow); }
-.challenge-list .round-meta { display: flex; flex-direction: column; gap: 2px; }
-.challenge-list .round-meta strong { font-size: 15px; }
-.challenge-list .round-meta em { font-style: normal; font-size: 12px; font-weight: 500; opacity: 0.7; }
+.map-node + .map-node { margin-top: 10px; }
+.map-node::before {
+  content: "";
+  position: absolute;
+  left: -1px;
+  top: -11px;
+  width: 2px;
+  height: 11px;
+  background: rgba(212, 225, 87, 0.35);
+}
+.map-node .round-meta { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.map-node .round-meta strong { font-size: 15px; }
+.map-node .round-meta em { font-style: normal; font-size: 12px; font-weight: 500; opacity: 0.72; }
+.map-node .tag { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--yellow); flex-shrink: 0; }
+.map-node:hover { filter: brightness(1.08); }
+.map-node.locked { opacity: 0.38; cursor: not-allowed; }
+.map-node.done { border-color: rgba(212, 225, 87, 0.45); }
+.map-node.now {
+  border-color: var(--yellow);
+  box-shadow: 0 0 0 2px rgba(212, 225, 87, 0.25);
+  background: rgba(212, 225, 87, 0.08);
+}
+.scout-diff {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--yellow);
+  margin: 4px 0 10px;
+}
+.scout-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 14px; margin: 0 0 16px; }
+.scout-stat { display: flex; flex-direction: column; gap: 4px; }
+.scout-stat span { font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.75; }
+.scout-bar {
+  height: 6px;
+  border-radius: 99px;
+  background: rgba(255,255,255,0.1);
+  overflow: hidden;
+}
+.scout-bar i {
+  display: block;
+  height: 100%;
+  background: var(--yellow);
+  border-radius: 99px;
+}
 
 @media (max-width: 700px) {
   .roster-grid { grid-template-columns: 1fr; }
