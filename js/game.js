@@ -8,9 +8,9 @@ const NET_HS = 3;
 const TAU = Math.PI * 2;
 
 const DIFF = {
-  easy: { speed: 11.2, err: 2.6, react: 0.3, assist: 0.7 },
-  normal: { speed: 14.4, err: 1.25, react: 0.16, assist: 0.4 },
-  hard: { speed: 16.6, err: 0.5, react: 0.08, assist: 0.14 },
+  easy: { speed: 7.1, err: 2.2, react: 0.35 },
+  normal: { speed: 8.4, err: 1.1, react: 0.2 },
+  hard: { speed: 9.8, err: 0.45, react: 0.12 },
 };
 
 const $ = (id) => document.getElementById(id);
@@ -116,15 +116,30 @@ class Sfx {
     g.connect(this.master);
     src.start();
   }
-  hit(power) {
-    this.beep(180 + power * 220, 0.08, "square", 0.12);
-    this.noise(0.05, 0.08 + power * 0.06);
+  hit(power, kind) {
+    const dink = kind === "dink" || kind === "drop" || power < 0.32;
+    if (dink) {
+      this.beep(1280, 0.032, "triangle", 0.1, 820);
+      this.beep(540, 0.04, "sine", 0.04, 280);
+      this.noise(0.028, 0.05);
+      return;
+    }
+    if (kind === "smash") {
+      this.beep(210, 0.07, "square", 0.15, 110);
+      this.noise(0.06, 0.12);
+      return;
+    }
+    this.beep(720, 0.042, "triangle", 0.15, 280);
+    this.beep(190, 0.07, "sine", 0.07);
+    this.noise(0.038, 0.09);
   }
   bounce() {
-    this.beep(240, 0.05, "sine", 0.08, 140);
+    this.beep(760, 0.038, "sine", 0.05, 380);
+    this.noise(0.022, 0.035);
   }
   net() {
-    this.beep(90, 0.12, "sawtooth", 0.07);
+    this.beep(140, 0.1, "triangle", 0.07, 70);
+    this.noise(0.05, 0.05);
   }
   point() {
     this.beep(520, 0.12, "triangle", 0.12, 780);
@@ -184,12 +199,16 @@ export class Game {
       y: near ? 3 : 41,
       vx: 0,
       vy: 0,
-      speed: 15,
+      speed: 9.1,
       charge: 0,
       charging: false,
       swing: 0,
       swinging: false,
       walk: 0,
+      crouch: 0.34,
+      twist: 0.1,
+      hand: 1,
+      shotKind: "dink",
       lastVolley: -10,
       face: near ? 1 : -1,
       skin: near ? "#e2b08c" : "#c99272",
@@ -536,20 +555,22 @@ export class Game {
     const receiver = p.side === "near" ? "far" : "near";
     const tx = even ? (receiver === "far" ? 5 : 15) : receiver === "far" ? 15 : 5;
     const ty = receiver === "far" ? rand(32.5, 41) : rand(3, 11.5);
-    const t = lerp(1.05, 0.82, power);
+    const t = lerp(1.38, 1.18, power);
     this.ball.held = false;
     this.ball.live = true;
     this.ball.x = p.x + 0.4;
     this.ball.y = p.y + (p.side === "near" ? 0.6 : -0.6);
-    this.ball.z = 2.2;
-    this.launchTo(this.ball, tx + rand(-0.4, 0.4), ty, t, 0.22 + (1 - power) * 0.25);
+    this.ball.z = 1.9;
+    p.shotKind = "serve";
+    p.hand = 1;
+    this.launchTo(this.ball, tx + rand(-0.35, 0.35), ty, t, 0.18 + (1 - power) * 0.18, "serve");
     this.ball.lastHit = p.side;
     this.phase = "rally";
     this.rallyLen = 1;
     this.highlightBox = null;
     p.swinging = true;
     p.swing = 0.01;
-    this.sfx.hit(power * 0.6);
+    this.sfx.hit(0.35, "serve");
     this.toast(even ? "Even court · diagonal" : "Odd court · diagonal");
   }
 
@@ -592,42 +613,45 @@ export class Game {
     const atBase = p.side === "near" ? p.y < 8 : p.y > 36;
     const thirdShot = this.match.serveBounced && !this.match.returnBounced && p.side === this.match.server;
 
-    let tx, ty, flight;
-    const open = opp.x < 10 ? rand(12.5, 18.2) : rand(1.8, 7.5);
-    const aimBias = p.side === "near" ? (this.keys.has("KeyD") ? 3 : this.keys.has("KeyA") ? -3 : 0) : this.keys.has("ArrowRight") ? 3 : this.keys.has("ArrowLeft") ? -3 : 0;
-    tx = clamp(open + aimBias * 0.7, 1.2, 18.8);
+    let tx, ty, flight, kind;
+    const open = opp.x < 10 ? rand(11.5, 17.4) : rand(2.6, 8.5);
+    const aimBias = p.side === "near" ? (this.keys.has("KeyD") ? 2.4 : this.keys.has("KeyA") ? -2.4 : 0) : this.keys.has("ArrowRight") ? 2.4 : this.keys.has("ArrowLeft") ? -2.4 : 0;
+    tx = clamp(open + aimBias * 0.7, 2.2, 17.8);
+    p.hand = b.x >= p.x ? 1 : -1;
 
     if (lob) {
-      ty = p.side === "near" ? rand(38, 43) : rand(1.2, 6);
-      flight = lerp(1.2, 1.5, power);
+      ty = p.side === "near" ? rand(37, 42) : rand(2, 7);
+      flight = lerp(1.45, 1.75, power);
+      kind = "lob";
     } else if (b.z > 5.2 && Math.abs(p.y - NET_Y) < 10) {
-      ty = p.side === "near" ? opp.y - 1.4 : opp.y + 1.4;
-      tx = clamp(opp.x + (Math.random() - 0.5) * 2, 1, 19);
-      flight = 0.55;
-      this.shake = 7;
-    } else if (power < 0.28 || atKitchen || thirdShot) {
-      ty = p.side === "near" ? rand(26.4, 28.6) : rand(15.4, 17.6);
-      flight = lerp(1.05, 1.28, 1 - power);
-    } else if (atBase && power < 0.55) {
-      ty = p.side === "near" ? rand(26.2, 28.4) : rand(15.6, 17.8);
-      flight = 1.15;
+      ty = p.side === "near" ? opp.y - 1.2 : opp.y + 1.2;
+      tx = clamp(opp.x + (Math.random() - 0.5) * 1.6, 2, 18);
+      flight = 0.85;
+      kind = "smash";
+      this.shake = 5;
+    } else if (power < 0.4 || atKitchen || thirdShot) {
+      ty = p.side === "near" ? rand(26.2, 28.8) : rand(15.2, 17.8);
+      flight = thirdShot || atBase ? lerp(1.35, 1.55, 1 - power) : lerp(1.05, 1.28, 1 - power);
+      kind = thirdShot || atBase ? "drop" : "dink";
     } else {
-      ty = p.side === "near" ? rand(34, 41.5) : rand(2.8, 10);
-      flight = lerp(0.92, 0.7, power);
+      ty = p.side === "near" ? rand(32, 40) : rand(4, 12);
+      flight = lerp(1.18, 1.0, power);
+      kind = "drive";
     }
 
-    let noise = (p === this.far && this.mode === "cpu" ? DIFF[this.diff].err : 0.45) * (0.25 + d * 0.08);
+    let noise = (p === this.far && this.mode === "cpu" ? DIFF[this.diff].err : 0.4) * (0.2 + d * 0.06);
     if (p === this.far && this.mode === "cpu") {
-      tx = clamp(tx, 3.4, 16.6);
-      ty = p.side === "far" ? clamp(ty, 2.4, 17.2) : clamp(ty, 26.8, 41.6);
-      noise *= 0.35;
+      tx = clamp(tx, 3.6, 16.4);
+      ty = p.side === "far" ? clamp(ty, 3.2, 17.0) : clamp(ty, 27.0, 40.8);
+      noise *= 0.3;
     }
-    this.launchTo(b, tx, ty, flight, noise);
+    p.shotKind = kind;
+    this.launchTo(b, tx, ty, flight, noise, kind);
     b.lastHit = p.side;
     b.lastBounceSide = null;
     b.bouncesSide = 0;
     this.rallyLen += 1;
-    this.sfx.hit(power);
+    this.sfx.hit(power, kind);
     try {
       navigator.vibrate?.(12);
     } catch {
@@ -642,15 +666,17 @@ export class Game {
     return z + vz * tNet - 0.5 * G * tNet * tNet;
   }
 
-  launchTo(b, tx, ty, t, noise) {
-    tx = clamp(tx + rand(-noise, noise), 1.4, 18.6);
-    ty = ty + rand(-noise, noise) * 0.3;
-    if (b.y < NET_Y) ty = clamp(ty, NET_Y + 5, 42.4);
-    else ty = clamp(ty, 1.6, NET_Y - 5);
+  launchTo(b, tx, ty, t, noise, style) {
+    tx = clamp(tx + rand(-noise, noise), 1.6, 18.4);
+    ty = ty + rand(-noise, noise) * 0.25;
+    if (b.y < NET_Y) ty = clamp(ty, NET_Y + 5.2, 42.2);
+    else ty = clamp(ty, 1.8, NET_Y - 5.2);
 
-    const z0 = Math.max(b.z, 1.05);
-    t = clamp(t, 0.72, 2.05);
-    const need = 3.4;
+    const z0 = Math.max(b.z, 1.15);
+    const dinkish = style === "dink" || style === "drop" || style === "lob";
+    const tMin = style === "lob" ? 1.5 : style === "drop" || style === "serve" ? 1.2 : dinkish ? 1.05 : 1.0;
+    t = clamp(t, tMin, 2.25);
+    const need = style === "lob" ? 6.2 : dinkish || style === "serve" ? 4.7 : 4.15;
     let vx = 0,
       vy = 0,
       vz = 0;
@@ -659,10 +685,10 @@ export class Game {
       vy = (ty - b.y) / t;
       vz = 0.5 * G * t - z0 / t;
       if (this.heightAtNet(b.y, z0, vy, vz) >= need) break;
-      t = Math.min(2.05, t + 0.1);
+      t = Math.min(2.25, t + 0.1);
       if (i > 5) {
-        if (b.y > NET_Y) ty = Math.max(1.6, ty - 0.55);
-        else ty = Math.min(42.4, ty + 0.55);
+        if (b.y > NET_Y) ty = Math.max(1.8, ty - 0.5);
+        else ty = Math.min(42.2, ty + 0.5);
       }
     }
     b.z = z0;
@@ -701,16 +727,21 @@ export class Game {
     }
 
     for (const p of [this.near, this.far]) {
-      if (p.charging) p.charge = clamp(p.charge + dt * 1.35, 0, 1);
+      if (p.charging) p.charge = clamp(p.charge + dt * 0.82, 0, 1);
       if (p.swinging) {
-        p.swing += dt * 5.2;
+        p.swing += dt * 2.55;
         if (p.swing >= 1) {
           p.swinging = false;
           p.swing = 0;
         }
       }
       const spd = Math.hypot(p.vx, p.vy);
-      p.walk += spd * dt * 3.2;
+      p.walk += spd * dt * 2.4;
+      const punch = p.swinging ? Math.sin(Math.min(p.swing, 1) * Math.PI) : 0;
+      const wantCrouch = 0.34 + (p.charging ? p.charge * 0.28 : 0) + punch * 0.22 + (spd > 1 ? 0.08 : 0);
+      p.crouch = lerp(p.crouch ?? 0.34, wantCrouch, 0.2);
+      const wantTwist = (p.hand || 1) * (0.14 + (p.charging ? p.charge * 0.35 : 0) + punch * 0.55);
+      p.twist = lerp(p.twist ?? 0.1, wantTwist, 0.22);
       if (p.side === "near") {
         p.x = clamp(p.x, -2.5, CW + 2.5);
         p.y = clamp(p.y, -3.2, NET_Y - 0.35);
@@ -830,13 +861,13 @@ export class Game {
 
   chooseAIShot(p) {
     const hard = this.diff === "hard" && !this.demo;
-    const atK = Math.abs(p.y - (p.side === "near" ? 15 : 29)) < 3;
+    const atK = Math.abs(p.y - (p.side === "near" ? 15 : 29)) < 3.2;
     const third = this.match.serveBounced && !this.match.returnBounced && p.side === this.match.server;
-    if (this.ball.z > 5.4 && Math.abs(p.y - NET_Y) < 11) return 0.92;
-    if (third) return 0.2;
-    if (atK) return hard && Math.random() < 0.14 ? 0.82 : 0.18;
-    if (Math.random() < 0.18) return 0.22;
-    return rand(0.45, 0.7);
+    if (this.ball.z > 5.4 && Math.abs(p.y - NET_Y) < 11) return 0.88;
+    if (third) return 0.18;
+    if (atK) return hard && Math.random() < 0.1 ? 0.62 : 0.16;
+    if (Math.random() < 0.72) return 0.2;
+    return rand(0.22, 0.38);
   }
 
   moveTo(p, x, y, dt) {
@@ -902,11 +933,11 @@ export class Game {
       if (b.z <= 0) {
         b.z = 0;
         const speed = Math.hypot(b.vx, b.vy);
-        const e = lerp(0.3, 0.5, clamp(speed / 38, 0, 1));
+        const e = lerp(0.16, 0.34, clamp(speed / 28, 0, 1));
         b.vz = Math.abs(b.vz) * e;
-        b.vx *= 0.82;
-        b.vy *= 0.82;
-        if (b.vz < 1.15) b.vz = 0;
+        b.vx *= 0.72;
+        b.vy *= 0.72;
+        if (b.vz < 0.95) b.vz = 0;
         this.onBounce();
         if (this.phase !== "rally") return;
         this.sfx.bounce();
@@ -1351,64 +1382,109 @@ export class Game {
 
   drawPlayer(ctx, p) {
     const pr = this.project(p.x, p.y, 0);
-    const s = pr.s * 1.32;
+    const s = pr.s * 1.42;
     const back = p.side === "near";
-    const swing = p.swinging ? Math.sin(p.swing * Math.PI) : 0;
-    const step = Math.sin(p.walk) * 5 * s;
+    const punch = p.swinging ? Math.sin(Math.min(p.swing, 1) * Math.PI) : 0;
+    const charge = p.charging ? p.charge : 0;
+    const crouch = p.crouch ?? 0.34;
+    const twist = p.twist ?? 0.1;
+    const hand = p.hand || 1;
+    const dink = p.shotKind === "dink" || p.shotKind === "drop";
+    const bob = Math.sin(this.time * 6 + (back ? 0 : 1)) * (1 - punch) * 1.2 * s;
+
     ctx.save();
-    ctx.translate(pr.sx, pr.sy);
+    ctx.translate(pr.sx, pr.sy + bob * 0.15);
 
     ctx.fillStyle = "rgba(0,0,0,0.28)";
     ctx.beginPath();
-    ctx.ellipse(0, 4 * s, 16 * s, 6 * s, 0, 0, TAU);
+    ctx.ellipse(twist * 3 * s, 5 * s, 19 * s, 7 * s, 0, 0, TAU);
     ctx.fill();
 
-    const leg = (ox, sy) => {
-      ctx.fillStyle = p.shorts;
-      ctx.fillRect(ox - 4 * s, -28 * s + sy, 8 * s, 18 * s);
-      ctx.fillStyle = p.skin;
-      ctx.fillRect(ox - 3.2 * s, -12 * s + sy, 6.4 * s, 12 * s);
-      ctx.fillStyle = "#f4f1e8";
-      ctx.fillRect(ox - 4.2 * s, sy - 2 * s, 8.5 * s, 4 * s);
+    const hipX = twist * 5 * s;
+    const hipY = (-28 + crouch * 16) * s;
+    const shX = twist * 10 * s;
+    const shY = hipY - 24 * s;
+    const headY = shY - 15 * s;
+    const kL = { x: (-9 + twist * 2) * s, y: hipY + (13 - crouch * 1.5) * s };
+    const kR = { x: (9 + twist * 3) * s, y: hipY + (13 - crouch * 1.5) * s };
+    const fL = { x: (-12 + twist) * s, y: 3 * s };
+    const fR = { x: (11 + twist * 2) * s, y: 3 * s };
+
+    const cap = (a, b, w, color) => {
+      ctx.strokeStyle = color;
+      ctx.lineWidth = w;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
+      ctx.stroke();
     };
-    leg(-6 * s, step);
-    leg(6 * s, -step);
 
-    ctx.fillStyle = p.shirt;
-    roundRect(ctx, -13 * s, -58 * s, 26 * s, 32 * s, 8 * s);
+    ctx.fillStyle = "#efe6d8";
+    ctx.beginPath();
+    ctx.ellipse(fL.x, fL.y, 7.2 * s, 3.1 * s, 0, 0, TAU);
+    ctx.ellipse(fR.x, fR.y, 7.2 * s, 3.1 * s, 0, 0, TAU);
     ctx.fill();
+
+    cap({ x: hipX - 6 * s, y: hipY }, kL, 8 * s, p.shorts);
+    cap({ x: hipX + 6 * s, y: hipY }, kR, 8 * s, p.shorts);
+    cap(kL, fL, 6.4 * s, p.skin);
+    cap(kR, fR, 6.4 * s, p.skin);
+
+    ctx.fillStyle = p.shorts;
+    roundRect(ctx, hipX - 14 * s, hipY - 5 * s, 28 * s, 15 * s, 7 * s);
+    ctx.fill();
+
+    ctx.save();
+    ctx.translate(hipX, hipY);
+    ctx.rotate(-0.1 - punch * 0.1 + twist * 0.08);
+    ctx.fillStyle = p.shirt;
+    roundRect(ctx, -13 * s, -28 * s, 26 * s, 30 * s, 9 * s);
+    ctx.fill();
+    ctx.restore();
 
     ctx.fillStyle = p.skin;
     ctx.beginPath();
-    ctx.arc(0, -70 * s, 11 * s, 0, TAU);
+    ctx.arc(shX, headY, 11.2 * s, 0, TAU);
     ctx.fill();
-
     ctx.fillStyle = p.visor;
     if (back) {
-      ctx.fillRect(-12 * s, -78 * s, 24 * s, 6 * s);
-      ctx.fillRect(-12 * s, -74 * s, 24 * s, 4 * s);
+      roundRect(ctx, shX - 12 * s, headY - 9 * s, 24 * s, 6 * s, 2 * s);
+      ctx.fill();
     } else {
-      ctx.fillRect(-12 * s, -80 * s, 24 * s, 6 * s);
-      ctx.fillStyle = "#111";
+      roundRect(ctx, shX - 12 * s, headY - 10 * s, 24 * s, 6 * s, 2 * s);
+      ctx.fill();
+      ctx.fillStyle = "#1a1a1a";
       ctx.beginPath();
-      ctx.arc(-4 * s, -70 * s, 1.6 * s, 0, TAU);
-      ctx.arc(4 * s, -70 * s, 1.6 * s, 0, TAU);
+      ctx.arc(shX - 4 * s, headY, 1.5 * s, 0, TAU);
+      ctx.arc(shX + 4 * s, headY, 1.5 * s, 0, TAU);
       ctx.fill();
     }
 
-    const ang = back ? -0.9 + swing * 2.4 : 0.9 - swing * 2.4;
+    const offHand = {
+      x: shX - hand * (14 + punch * 3) * s,
+      y: shY + (12 + punch * 2) * s,
+    };
+    cap({ x: shX - hand * 7 * s, y: shY + 3 * s }, offHand, 5.2 * s, p.skin);
+
+    const poke = dink ? 11 : 18;
+    const wind = charge * 12;
+    const ax = shX + hand * (6 + wind - punch * 2) * s;
+    const ay = shY + (10 - punch * poke + charge * 5) * s;
+    cap({ x: shX + hand * 8 * s, y: shY + 3 * s }, { x: ax, y: ay }, 5.4 * s, p.skin);
+
     ctx.save();
-    ctx.translate(12 * s, -48 * s);
-    ctx.rotate(ang);
-    ctx.fillStyle = p.skin;
-    ctx.fillRect(0, -3 * s, 16 * s, 6 * s);
-    ctx.fillStyle = "#2a2a2a";
-    ctx.fillRect(14 * s, -2.2 * s, 10 * s, 4.4 * s);
-    ctx.fillStyle = p.paddle;
-    roundRect(ctx, 22 * s, -11 * s, 18 * s, 22 * s, 6 * s);
+    ctx.translate(ax + hand * 7 * s, ay - 5 * s);
+    ctx.rotate(hand * (0.55 - punch * 0.95 - charge * 0.2));
+    ctx.fillStyle = "#222";
+    roundRect(ctx, -2 * s, 7 * s, 4 * s, 10 * s, 1.4 * s);
     ctx.fill();
-    ctx.strokeStyle = "rgba(255,255,255,0.35)";
-    ctx.lineWidth = 1;
+    ctx.fillStyle = p.paddle;
+    ctx.beginPath();
+    ctx.ellipse(0, -1 * s, 11.5 * s, 14.5 * s, 0, 0, TAU);
+    ctx.fill();
+    ctx.strokeStyle = "rgba(255,255,255,0.45)";
+    ctx.lineWidth = 1.3 * s;
     ctx.stroke();
     ctx.restore();
 
