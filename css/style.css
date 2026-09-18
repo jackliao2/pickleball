@@ -318,7 +318,13 @@ body.menu-open #hud,
 body.menu-open #toolbar #btn-pause { display: none; }
 
 @media (max-width: 700px) {
-  .sb-pts { font-size: 28px; }
+  #hud { padding-top: 52px; }
+  .sb { min-width: auto; width: calc(100vw - 24px); }
+  .sb-pts { font-size: 26px; }
   .sb-name { font-size: 11px; }
-  #banner { font-size: 42px; top: 34%; }
+  .sb-call { font-size: 16px; }
+  #banner { font-size: 36px; top: 32%; }
+  #btn-full { display: none; }
+  .card { padding: 22px 16px 16px; }
+  h1 { font-size: 52px; }
 }
