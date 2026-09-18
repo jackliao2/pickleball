@@ -210,6 +210,8 @@ export class Game {
       swing: 0,
       swinging: false,
       swingRate: 2.2,
+      chargeDir: 1,
+      kitchenWatch: 0,
       walk: 0,
       crouch: 0.34,
       twist: 0.1,
@@ -509,6 +511,10 @@ export class Game {
     this.far.charge = 0;
     this.near.lastVolley = -10;
     this.far.lastVolley = -10;
+    this.near.kitchenWatch = 0;
+    this.far.kitchenWatch = 0;
+    this.near.chargeDir = 1;
+    this.far.chargeDir = 1;
 
     const even = this.evenScore();
     m.targetRight = even;
@@ -607,8 +613,8 @@ export class Game {
     const sideOk = p.side === "near" ? b.y <= NET_Y + 0.45 : b.y >= NET_Y - 0.45;
     if (!sideOk || d > reach + 0.7 || b.z > 8.5 || b.z < -0.05) return;
 
-    const volley = b.z > 0.28 && this.ball.lastBounceSide !== p.side;
-    if (volley && (playerInKitchen(p) || inKitchen(p.x, p.y))) {
+    const volley = b.z > 0.42 && this.ball.lastBounceSide !== p.side;
+    if (volley && playerInKitchen(p)) {
       this.flash("KITCHEN", 1.15);
       this.sfx.fault();
       this.endRally("kitchen", p.side);
@@ -628,6 +634,7 @@ export class Game {
         return;
       }
       p.lastVolley = this.time;
+      p.kitchenWatch = playerInKitchen(p) ? 0 : this.time + 0.42;
     }
 
     const opp = p.side === "near" ? this.far : this.near;
@@ -647,12 +654,12 @@ export class Game {
       ty = p.side === "near" ? rand(37, 42) : rand(2, 7);
       flight = lerp(1.45, 1.75, power);
       kind = "lob";
-    } else if (atKitchen && power >= 0.3) {
-      ty = p.side === "near" ? clamp(opp.y - 0.4, 27.2, 32) : clamp(opp.y + 0.4, 12, 16.8);
-      tx = clamp(opp.x + (Math.random() - 0.5) * 1.2 + aimBias * 0.4, 3, 17);
-      flight = lerp(0.62, 0.46, power);
+    } else if (atKitchen && power >= 0.28) {
+      ty = p.side === "near" ? clamp(opp.y - 0.3, 27.4, 31.5) : clamp(opp.y + 0.3, 12.5, 16.6);
+      tx = clamp(opp.x + (Math.random() - 0.5) * 1.1 + aimBias * 0.45, 3, 17);
+      flight = lerp(0.52, 0.34, power);
       kind = b.z > 4.6 ? "smash" : "speedup";
-      this.shake = 6;
+      this.shake = 5;
     } else if (b.z > 5.2 && Math.abs(p.y - NET_Y) < 10 && power >= 0.35) {
       ty = p.side === "near" ? opp.y - 1.0 : opp.y + 1.0;
       tx = clamp(opp.x + (Math.random() - 0.5) * 1.4, 2, 18);
@@ -714,23 +721,38 @@ export class Game {
     } else if (b.y < NET_Y) ty = clamp(ty, NET_Y + 5, 42.2);
     else ty = clamp(ty, 1.8, NET_Y - 5);
 
-    const z0 = Math.max(b.z, attack ? 2.35 : 1.15);
+    const z0 = Math.max(b.z, attack ? 1.7 : 1.15);
     const dinkish = style === "dink" || style === "drop" || style === "lob";
-    const tMin = style === "lob" ? 1.5 : style === "drop" || style === "serve" ? 1.18 : style === "dink" ? 0.72 : attack ? 0.44 : 0.88;
-    t = clamp(t, tMin, 2.25);
-    const need = style === "lob" ? 6.2 : attack ? 3.52 : style === "dink" ? 4.15 : dinkish || style === "serve" ? 4.55 : 4.05;
+    const tMin = style === "lob" ? 1.5 : style === "drop" || style === "serve" ? 1.18 : style === "dink" ? 0.72 : attack ? 0.34 : 0.88;
+    const tMax = attack ? 0.56 : 2.25;
+    t = clamp(t, tMin, tMax);
+    const need = style === "lob" ? 6.2 : attack ? 3.42 : style === "dink" ? 4.15 : dinkish || style === "serve" ? 4.55 : 4.05;
     let vx = 0,
       vy = 0,
       vz = 0;
-    for (let i = 0; i < 16; i++) {
+    if (attack) {
       vx = (tx - b.x) / t;
       vy = (ty - b.y) / t;
       vz = 0.5 * G * t - z0 / t;
-      if (this.heightAtNet(b.y, z0, vy, vz) >= need) break;
-      t = Math.min(2.25, t + 0.1);
-      if (i > 5) {
-        if (b.y > NET_Y) ty = Math.max(1.8, ty - 0.5);
-        else ty = Math.min(42.2, ty + 0.5);
+      const zNet = this.heightAtNet(b.y, z0, vy, vz);
+      if (zNet < need && Math.abs(vy) > 0.08) {
+        const tNet = (NET_Y - b.y) / vy;
+        if (tNet > 0.05) vz = (need - z0 + 0.5 * G * tNet * tNet) / tNet;
+      }
+      const boost = 1.12 + (style === "smash" ? 0.38 : 0.28);
+      vx *= boost;
+      vy *= boost;
+    } else {
+      for (let i = 0; i < 16; i++) {
+        vx = (tx - b.x) / t;
+        vy = (ty - b.y) / t;
+        vz = 0.5 * G * t - z0 / t;
+        if (this.heightAtNet(b.y, z0, vy, vz) >= need) break;
+        t = Math.min(tMax, t + 0.1);
+        if (i > 5) {
+          if (b.y > NET_Y) ty = Math.max(1.8, ty - 0.5);
+          else ty = Math.min(42.2, ty + 0.5);
+        }
       }
     }
     b.z = z0;
@@ -769,7 +791,19 @@ export class Game {
     }
 
     for (const p of [this.near, this.far]) {
-      if (p.charging) p.charge = clamp(p.charge + dt * 1.25, 0, 1);
+      if (p.charging) {
+        p.chargeDir = p.chargeDir || 1;
+        p.charge += dt * 1.55 * p.chargeDir;
+        if (p.charge >= 1) {
+          p.charge = 1;
+          p.chargeDir = -1;
+        } else if (p.charge <= 0) {
+          p.charge = 0;
+          p.chargeDir = 1;
+        }
+        p.hand = this.handFor(p, this.ball);
+        p.shotKind = p.charge > 0.28 ? "speedup" : "dink";
+      }
       if (p.swinging) {
         p.swing += dt * (p.swingRate || 2.2);
         if (p.swing >= 1) {
@@ -780,10 +814,11 @@ export class Game {
       const spd = Math.hypot(p.vx, p.vy);
       p.walk += spd * dt * 2.4;
       const punch = p.swinging ? Math.sin(Math.min(p.swing, 1) * Math.PI) : 0;
-      const wantCrouch = 0.34 + (p.charging ? p.charge * 0.28 : 0) + punch * 0.22 + (spd > 1 ? 0.08 : 0);
+      const coil = p.charging ? 0.22 + p.charge * 0.55 : 0;
+      const wantCrouch = 0.34 + coil * 0.35 + punch * 0.22 + (spd > 1 ? 0.08 : 0);
       p.crouch = lerp(p.crouch ?? 0.34, wantCrouch, 0.2);
-      const wantTwist = (p.hand || 1) * (0.14 + (p.charging ? p.charge * 0.35 : 0) + punch * 0.55);
-      p.twist = lerp(p.twist ?? 0.1, wantTwist, 0.22);
+      const wantTwist = (p.hand || 1) * (0.16 + coil * 0.95 + punch * 0.5);
+      p.twist = lerp(p.twist ?? 0.1, wantTwist, 0.24);
       if (p.side === "near") {
         p.x = clamp(p.x, -2.5, CW + 2.5);
         p.y = clamp(p.y, -3.2, NET_Y - 0.35);
@@ -791,8 +826,9 @@ export class Game {
         p.x = clamp(p.x, -2.5, CW + 2.5);
         p.y = clamp(p.y, NET_Y + 0.35, CL + 3.2);
       }
+      if (p.kitchenWatch && this.time > p.kitchenWatch) p.kitchenWatch = 0;
       if (
-        p.lastVolley > this.time - 0.32 &&
+        p.kitchenWatch &&
         playerInKitchen(p) &&
         this.phase === "rally" &&
         this.ball.live &&
@@ -847,6 +883,12 @@ export class Game {
   incoming(p) {
     if (!this.ball.live) return false;
     return p.side === "near" ? this.ball.vy < 0 : this.ball.vy > 0;
+  }
+
+  handFor(p, b) {
+    if (!b) return p.hand || 1;
+    const right = b.x >= p.x - 0.15;
+    return p.side === "near" ? (right ? 1 : -1) : right ? -1 : 1;
   }
 
   ai(dt) {
@@ -1481,10 +1523,10 @@ export class Game {
     const shX = twist * 10 * s;
     const shY = hipY - 24 * s;
     const headY = shY - 15 * s;
-    const kL = { x: (-9 + twist * 2) * s, y: hipY + (13 - crouch * 1.5) * s };
-    const kR = { x: (9 + twist * 3) * s, y: hipY + (13 - crouch * 1.5) * s };
-    const fL = { x: (-12 + twist) * s, y: 3 * s };
-    const fR = { x: (11 + twist * 2) * s, y: 3 * s };
+    const kL = { x: (-9 + twist * 2 - hand * backswing * 2) * s, y: hipY + (13 - crouch * 1.5) * s };
+    const kR = { x: (9 + twist * 3 + hand * backswing * 3) * s, y: hipY + (13 - crouch * 1.5) * s };
+    const fL = { x: (-12 + twist - hand * backswing * 4) * s, y: 3 * s };
+    const fR = { x: (11 + twist * 2 + hand * backswing * 6) * s, y: 3 * s };
 
     const cap = (a, b, w, color) => {
       ctx.strokeStyle = color;
@@ -1513,7 +1555,7 @@ export class Game {
 
     ctx.save();
     ctx.translate(hipX, hipY);
-    ctx.rotate(-0.12 - fwd * 0.18 + backswing * 0.12 + twist * 0.1);
+    ctx.rotate(-0.1 + hand * backswing * 0.48 - fwd * 0.22 + twist * 0.08);
     ctx.fillStyle = p.shirt;
     roundRect(ctx, -13 * s, -28 * s, 26 * s, 30 * s, 9 * s);
     ctx.fill();
@@ -1538,19 +1580,19 @@ export class Game {
     }
 
     const offHand = {
-      x: shX - hand * (16 + fwd * 6) * s,
-      y: shY + (14 - fwd * 4) * s,
+      x: shX - hand * (18 + backswing * 8 + fwd * 4) * s,
+      y: shY + (12 + backswing * 6 - fwd * 5) * s,
     };
     cap({ x: shX - hand * 7 * s, y: shY + 3 * s }, offHand, 5.2 * s, p.skin);
 
-    const span = dink ? 20 : 28;
-    const ax = shX + hand * (8 + backswing * 16 - fwd * (6 + span * 0.15)) * s;
-    const ay = shY + (12 + backswing * 10 - fwd * span) * s;
+    const span = dink ? 18 : 26;
+    const ax = shX + hand * (7 + backswing * 24 - fwd * (8 + span * 0.2)) * s;
+    const ay = shY + (10 + backswing * 16 - fwd * span) * s;
     cap({ x: shX + hand * 9 * s, y: shY + 4 * s }, { x: ax, y: ay }, 5.8 * s, p.skin);
 
     ctx.save();
     ctx.translate(ax + hand * 6 * s, ay - 6 * s);
-    ctx.rotate(hand * (0.85 + backswing * 0.9 - fwd * 2.05));
+    ctx.rotate(hand * (0.7 + backswing * 1.45 - fwd * 2.15));
     ctx.fillStyle = "#222";
     roundRect(ctx, -2.2 * s, 8 * s, 4.4 * s, 11 * s, 1.4 * s);
     ctx.fill();
@@ -1568,11 +1610,19 @@ export class Game {
 
   drawCharge(ctx, p) {
     const pr = this.project(p.x, p.y, 6.2);
-    const w = 46 * pr.s;
-    ctx.fillStyle = "rgba(0,0,0,0.4)";
-    ctx.fillRect(pr.sx - w / 2, pr.sy, w, 6);
-    ctx.fillStyle = p.charge < 0.28 ? "#d4e157" : p.charge < 0.7 ? "#f0c14a" : "#e45a43";
-    ctx.fillRect(pr.sx - w / 2, pr.sy, w * p.charge, 6);
+    const w = 52 * pr.s;
+    const x0 = pr.sx - w / 2;
+    ctx.fillStyle = "rgba(0,0,0,0.45)";
+    ctx.fillRect(x0, pr.sy, w, 7);
+    const rising = (p.chargeDir || 1) > 0;
+    ctx.fillStyle = p.charge < 0.28 ? "#d4e157" : p.charge < 0.75 ? "#f0c14a" : "#e45a43";
+    ctx.fillRect(x0, pr.sy, w * p.charge, 7);
+    ctx.fillStyle = "rgba(255,255,255,0.85)";
+    ctx.fillRect(x0 + w - 2, pr.sy - 1, 2, 9);
+    if (!rising && p.charge < 0.95) {
+      ctx.fillStyle = "rgba(255,255,255,0.35)";
+      ctx.fillRect(x0, pr.sy, w * p.charge, 7);
+    }
   }
 }
 
