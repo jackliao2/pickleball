@@ -800,15 +800,16 @@ export class Game {
   }
 
   applyBuild(p, build) {
-    const st = { ...emptyStats(), ...build };
+    const st = emptyStats();
+    for (const id of STAT_IDS) st[id] = clamp(Number(build?.[id]) || 6, 2, 10);
     p.stats = st;
-    p.baseSpeed = 7.0 + st.speed * 0.42;
+    p.baseSpeed = 3.4 + st.speed * 0.98;
     p.speed = p.baseSpeed;
-    p.powerMul = 0.78 + st.power * 0.055;
-    p.aimSpread = lerp(2.5, 0.28, st.angle / 10);
+    p.powerMul = 0.62 + st.power * 0.08;
+    p.aimSpread = lerp(3.6, 0.2, st.angle / 10);
     p.serveSkill = st.serve;
     p.hands = st.hands;
-    p.reachFt = 2.32 + st.reach * 0.17;
+    p.reachFt = 1.7 + st.reach * 0.3;
   }
 
   inReach(p, x, y, z) {
@@ -1445,8 +1446,8 @@ export class Game {
     const boxL = even ? (receiver === "far" ? 0 : 10) : receiver === "far" ? 10 : 0;
     const boxR = boxL + 10;
     const aimed = clamp(20 - p.x, boxL + 1.4, boxR - 1.4);
-    const xSpread = lerp(0.62, 0.1, s);
-    this.launchTo(this.ball, aimed + rand(-xSpread, xSpread), ty, t, lerp(0.34, 0.06, s), "serve", p);
+    const xSpread = lerp(1.15, 0.08, s);
+    this.launchTo(this.ball, aimed + rand(-xSpread, xSpread), ty, t, lerp(0.55, 0.05, s), "serve", p);
     this.ball.lastHit = p.side;
     this.phase = "rally";
     this.rallyLen = 1;
@@ -1535,10 +1536,10 @@ export class Game {
     const flight = this.shotFlight(p, kind, power);
 
     const cpu = this.isCpuSide(p);
-    const spread = p.aimSpread ?? lerp(2.5, 0.28, (p.stats?.angle ?? 6) / 10);
+    const spread = p.aimSpread ?? lerp(3.6, 0.2, (p.stats?.angle ?? 6) / 10);
     let noise = cpu
-      ? DIFF[this.diff].err * 0.22 * spread * (0.7 + d * 0.05)
-      : spread * (0.65 + d * 0.05);
+      ? DIFF[this.diff].err * 0.7 * spread * (0.55 + d * 0.06)
+      : spread * (0.55 + d * 0.05);
     if (cpu) {
       tx = clamp(tx, 3.6, 16.4);
       ty = p.side === "far" ? clamp(ty, 3.2, 17.0) : clamp(ty, 27.0, 40.8);
@@ -1579,7 +1580,7 @@ export class Game {
     else ty = clamp(ty, 1.8, NET_Y - 5);
 
     const pow = p?.powerMul || 1;
-    const punch = clamp((pow - 0.78) / 0.55, 0, 1);
+    const punch = clamp((pow - 0.62) / 0.8, 0, 1);
     const z0 = Math.max(b.z, attack ? 1.7 : 1.15);
     const dinkish = style === "dink" || style === "drop" || style === "lob";
     let tMin, tMax;
@@ -1617,7 +1618,7 @@ export class Game {
       vx *= boost;
       vy *= boost;
       if (Math.abs(b.y - NET_Y) < 9.5) {
-        const cap = lerp(22, 30, punch);
+        const cap = lerp(15, 32, punch);
         const hspd = Math.hypot(vx, vy) || 1;
         if (hspd > cap) {
           vx *= cap / hspd;
@@ -1792,9 +1793,8 @@ export class Game {
   runAI(p, dt) {
     const d = DIFF[this.demo ? "normal" : this.diff];
     const atK = Math.abs(p.y - (p.side === "near" ? 15 : 29)) < 3.2;
-    const base = p.baseSpeed || d.speed;
-    const diffMul = this.demo ? 1 : d.speed / 8.4;
-    p.speed = base * diffMul * (atK && this.twoBounceDone() ? 1.32 : this.twoBounceDone() ? 1.12 : 1);
+    const base = p.baseSpeed || 9.2;
+    p.speed = base * (atK && this.twoBounceDone() ? 1.18 : 1);
     if (this.phase === "serve") {
       if (p === this.serverPlayer()) {
         this.serveT += dt;
@@ -1865,7 +1865,7 @@ export class Game {
           this.moveTo(p, p.x, outY, dt);
         } else {
           p.aiWind = (p.aiWind || 0) + dt;
-          const wait = Math.max(0.02, d.react * lerp(1.05, 0.45, (p.hands || 6) / 10));
+          const wait = Math.max(0.03, d.react * lerp(1.7, 0.32, (p.hands || 6) / 10));
           if (p.aiWind >= wait) {
             p.charge = this.chooseAIShot(p);
             this.doSwing(p, p.charge);
