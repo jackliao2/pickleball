@@ -372,6 +372,7 @@ export class Game {
     this.paused = false;
     this.touch = false;
 
+    this.lookSpin = { you: 0, opp: 0 };
     this.youLook = this.loadLook() || { ...DEFAULT_YOU_LOOK };
     this.oppLook = randomLook();
     this.near = this.makePlayer("near");
@@ -482,13 +483,45 @@ export class Game {
   }
 
   rerollLook(who = "you") {
+    this.sfx.ensure();
+    const canvas = who === "opp" ? $("look-preview-opp") : $("look-preview");
+    const btn = who === "opp" ? $("btn-random-look-opp") : $("btn-random-look");
+    if (this.lookSpin[who]) cancelAnimationFrame(this.lookSpin[who]);
+    canvas?.classList.add("spinning");
+    if (btn) btn.disabled = true;
+    const start = performance.now();
+    const dur = 1000;
+    let lastSwap = 0;
+    const tick = (now) => {
+      const t = clamp((now - start) / dur, 0, 1);
+      if (t >= 1) {
+        this.commitLook(who, randomLook());
+        canvas?.classList.remove("spinning");
+        canvas?.classList.add("landed");
+        setTimeout(() => canvas?.classList.remove("landed"), 280);
+        if (btn) btn.disabled = false;
+        this.lookSpin[who] = 0;
+        this.sfx.hit(0.45, "dink");
+        return;
+      }
+      const gap = 38 + t * t * 140;
+      if (now - lastSwap >= gap) {
+        lastSwap = now;
+        this.paintLookPreview(canvas, randomLook());
+      }
+      this.lookSpin[who] = requestAnimationFrame(tick);
+    };
+    this.lookSpin[who] = requestAnimationFrame(tick);
+  }
+
+  commitLook(who, look) {
     if (who === "opp") {
-      this.oppLook = randomLook();
-      this.applyLook(this.far, this.oppLook);
+      this.oppLook = look;
+      this.applyLook(this.far, look);
     } else {
-      this.youLook = randomLook();
+      this.youLook = look;
       this.saveLook();
-      this.applyLook(this.near, this.youLook);
+      this.applyLook(this.near, look);
     }
     this.drawLookPreview();
   }

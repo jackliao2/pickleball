@@ -258,7 +258,24 @@ canvas {
   border-radius: 12px;
   background: rgba(0,0,0,0.18);
   display: block;
+  transform-origin: 50% 70%;
 }
+.kit canvas.spinning {
+  animation: kit-spin 0.11s linear infinite;
+}
+.kit canvas.landed {
+  animation: kit-land 0.28s ease-out;
+}
+@keyframes kit-spin {
+  0% { transform: rotate(-8deg) scale(0.94); filter: saturate(1.15); }
+  50% { transform: rotate(8deg) scale(1.04); }
+  100% { transform: rotate(-8deg) scale(0.94); }
+}
+@keyframes kit-land {
+  0% { transform: scale(1.08) rotate(4deg); }
+  100% { transform: scale(1) rotate(0); }
+}
+.kit .btn:disabled { opacity: 0.65; cursor: wait; }
 .kit .btn { width: 100%; padding: 8px 10px; }
 .build-head {
   display: flex;
