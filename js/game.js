@@ -579,10 +579,10 @@ export class Game {
     p.swing = 0.01;
     const b = this.ball;
     if (!b.live) return;
-    const reach = 3.35;
+    const reach = 4.1;
     const d = dist(p.x, p.y, b.x, b.y);
-    const sideOk = p.side === "near" ? b.y <= NET_Y + 0.35 : b.y >= NET_Y - 0.35;
-    if (!sideOk || d > reach + 0.6 || b.z > 8.2 || b.z < -0.05) return;
+    const sideOk = p.side === "near" ? b.y <= NET_Y + 0.45 : b.y >= NET_Y - 0.45;
+    if (!sideOk || d > reach + 0.7 || b.z > 8.5 || b.z < -0.05) return;
 
     const volley = b.z > 0.28 && this.ball.lastBounceSide !== p.side;
     if (volley && (playerInKitchen(p) || inKitchen(p.x, p.y))) {
@@ -729,7 +729,7 @@ export class Game {
     for (const p of [this.near, this.far]) {
       if (p.charging) p.charge = clamp(p.charge + dt * 0.82, 0, 1);
       if (p.swinging) {
-        p.swing += dt * 2.55;
+        p.swing += dt * 2.15;
         if (p.swing >= 1) {
           p.swinging = false;
           p.swing = 0;
@@ -835,9 +835,9 @@ export class Game {
     if (incoming) {
       const ty = land.y + (p.side === "near" ? -1.15 : 1.15);
       this.moveTo(p, land.x + rand(-d.err, d.err) * 0.25, ty, dt);
-      const reach = 3.55;
-      const close = dist(p.x, p.y, this.ball.x, this.ball.y) < reach + 0.55;
-      const zone = this.ball.z < 6.4 && this.ball.z > 0.45;
+      const reach = 4.1;
+      const close = dist(p.x, p.y, this.ball.x, this.ball.y) < reach + 0.7;
+      const zone = this.ball.z < 7 && this.ball.z > 0.22;
       const mustLetBounce =
         (p.side !== this.match.server && !this.match.serveBounced) ||
         (p.side === this.match.server && !this.match.returnBounced);
@@ -932,12 +932,16 @@ export class Game {
 
       if (b.z <= 0) {
         b.z = 0;
-        const speed = Math.hypot(b.vx, b.vy);
-        const e = lerp(0.16, 0.34, clamp(speed / 28, 0, 1));
-        b.vz = Math.abs(b.vz) * e;
-        b.vx *= 0.72;
-        b.vy *= 0.72;
-        if (b.vz < 0.95) b.vz = 0;
+        const speed = Math.hypot(b.vx, b.vy, vz0);
+        const e = lerp(0.52, 0.66, clamp(speed / 30, 0, 1));
+        let outVz = Math.abs(vz0) * e;
+        const minPeak = speed < 9 ? 1.9 : 2.7;
+        const minVz = Math.sqrt(2 * G * minPeak);
+        if (outVz > 0.35) outVz = Math.max(outVz, minVz);
+        b.vz = outVz;
+        b.vx *= 0.8;
+        b.vy *= 0.8;
+        if (b.vz < 0.4) b.vz = 0;
         this.onBounce();
         if (this.phase !== "rally") return;
         this.sfx.bounce();
@@ -1384,8 +1388,11 @@ export class Game {
     const pr = this.project(p.x, p.y, 0);
     const s = pr.s * 1.42;
     const back = p.side === "near";
-    const punch = p.swinging ? Math.sin(Math.min(p.swing, 1) * Math.PI) : 0;
+    const sw = p.swinging ? clamp(p.swing, 0, 1) : 0;
     const charge = p.charging ? p.charge : 0;
+    const backswing = sw <= 0 ? charge : sw < 0.35 ? 1 - sw / 0.35 : 0;
+    const fwd = sw <= 0 ? 0 : sw < 0.35 ? sw / 0.35 : sw < 0.7 ? 1 : 1 + (sw - 0.7) / 0.3 * 0.85;
+    const punch = sw > 0 ? Math.sin(sw * Math.PI) : 0;
     const crouch = p.crouch ?? 0.34;
     const twist = p.twist ?? 0.1;
     const hand = p.hand || 1;
@@ -1437,7 +1444,7 @@ export class Game {
 
     ctx.save();
     ctx.translate(hipX, hipY);
-    ctx.rotate(-0.1 - punch * 0.1 + twist * 0.08);
+    ctx.rotate(-0.12 - fwd * 0.18 + backswing * 0.12 + twist * 0.1);
     ctx.fillStyle = p.shirt;
     roundRect(ctx, -13 * s, -28 * s, 26 * s, 30 * s, 9 * s);
     ctx.fill();
@@ -1462,29 +1469,28 @@ export class Game {
     }
 
     const offHand = {
-      x: shX - hand * (14 + punch * 3) * s,
-      y: shY + (12 + punch * 2) * s,
+      x: shX - hand * (16 + fwd * 6) * s,
+      y: shY + (14 - fwd * 4) * s,
     };
     cap({ x: shX - hand * 7 * s, y: shY + 3 * s }, offHand, 5.2 * s, p.skin);
 
-    const poke = dink ? 11 : 18;
-    const wind = charge * 12;
-    const ax = shX + hand * (6 + wind - punch * 2) * s;
-    const ay = shY + (10 - punch * poke + charge * 5) * s;
-    cap({ x: shX + hand * 8 * s, y: shY + 3 * s }, { x: ax, y: ay }, 5.4 * s, p.skin);
+    const span = dink ? 20 : 28;
+    const ax = shX + hand * (8 + backswing * 16 - fwd * (6 + span * 0.15)) * s;
+    const ay = shY + (12 + backswing * 10 - fwd * span) * s;
+    cap({ x: shX + hand * 9 * s, y: shY + 4 * s }, { x: ax, y: ay }, 5.8 * s, p.skin);
 
     ctx.save();
-    ctx.translate(ax + hand * 7 * s, ay - 5 * s);
-    ctx.rotate(hand * (0.55 - punch * 0.95 - charge * 0.2));
+    ctx.translate(ax + hand * 6 * s, ay - 6 * s);
+    ctx.rotate(hand * (0.85 + backswing * 0.9 - fwd * 2.05));
     ctx.fillStyle = "#222";
-    roundRect(ctx, -2 * s, 7 * s, 4 * s, 10 * s, 1.4 * s);
+    roundRect(ctx, -2.2 * s, 8 * s, 4.4 * s, 11 * s, 1.4 * s);
     ctx.fill();
     ctx.fillStyle = p.paddle;
     ctx.beginPath();
-    ctx.ellipse(0, -1 * s, 11.5 * s, 14.5 * s, 0, 0, TAU);
+    ctx.ellipse(0, -2 * s, 12 * s, 15.5 * s, 0, 0, TAU);
     ctx.fill();
-    ctx.strokeStyle = "rgba(255,255,255,0.45)";
-    ctx.lineWidth = 1.3 * s;
+    ctx.strokeStyle = "rgba(255,255,255,0.5)";
+    ctx.lineWidth = 1.4 * s;
     ctx.stroke();
     ctx.restore();
 
