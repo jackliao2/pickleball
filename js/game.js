@@ -128,9 +128,10 @@ class Sfx {
       this.noise(0.028, 0.05);
       return;
     }
-    if (kind === "smash") {
-      this.beep(210, 0.07, "square", 0.15, 110);
-      this.noise(0.06, 0.12);
+    if (kind === "smash" || kind === "speedup") {
+      this.beep(340, 0.05, "square", 0.16, 160);
+      this.beep(880, 0.03, "triangle", 0.1, 400);
+      this.noise(0.045, 0.11);
       return;
     }
     this.beep(720, 0.042, "triangle", 0.15, 280);
@@ -208,6 +209,7 @@ export class Game {
       charging: false,
       swing: 0,
       swinging: false,
+      swingRate: 2.2,
       walk: 0,
       crouch: 0.34,
       twist: 0.1,
@@ -630,7 +632,8 @@ export class Game {
 
     const opp = p.side === "near" ? this.far : this.near;
     const lob = p.side === "near" ? this.keys.has("KeyW") && power > 0.35 : this.keys.has("ArrowUp") && power > 0.35;
-    const atKitchen = playerInKitchen(p) || Math.abs(p.y - (p.side === "near" ? 15 : 29)) < 2.2;
+    const kitLine = p.side === "near" ? 15 : 29;
+    const atKitchen = Math.abs(p.y - kitLine) < 3.1;
     const atBase = p.side === "near" ? p.y < 8 : p.y > 36;
     const thirdShot = this.match.serveBounced && !this.match.returnBounced && p.side === this.match.server;
 
@@ -644,21 +647,32 @@ export class Game {
       ty = p.side === "near" ? rand(37, 42) : rand(2, 7);
       flight = lerp(1.45, 1.75, power);
       kind = "lob";
-    } else if (b.z > 5.2 && Math.abs(p.y - NET_Y) < 10) {
-      ty = p.side === "near" ? opp.y - 1.2 : opp.y + 1.2;
-      tx = clamp(opp.x + (Math.random() - 0.5) * 1.6, 2, 18);
-      flight = 0.85;
+    } else if (atKitchen && power >= 0.3) {
+      ty = p.side === "near" ? clamp(opp.y - 0.4, 27.2, 32) : clamp(opp.y + 0.4, 12, 16.8);
+      tx = clamp(opp.x + (Math.random() - 0.5) * 1.2 + aimBias * 0.4, 3, 17);
+      flight = lerp(0.62, 0.46, power);
+      kind = b.z > 4.6 ? "smash" : "speedup";
+      this.shake = 6;
+    } else if (b.z > 5.2 && Math.abs(p.y - NET_Y) < 10 && power >= 0.35) {
+      ty = p.side === "near" ? opp.y - 1.0 : opp.y + 1.0;
+      tx = clamp(opp.x + (Math.random() - 0.5) * 1.4, 2, 18);
+      flight = 0.7;
       kind = "smash";
       this.shake = 5;
-    } else if (power < 0.4 || atKitchen || thirdShot) {
-      ty = p.side === "near" ? rand(26.2, 28.8) : rand(15.2, 17.8);
-      flight = thirdShot || atBase ? lerp(1.35, 1.55, 1 - power) : lerp(1.05, 1.28, 1 - power);
-      kind = thirdShot || atBase ? "drop" : "dink";
+    } else if (thirdShot || (atBase && power < 0.45)) {
+      ty = p.side === "near" ? rand(26.2, 28.6) : rand(15.4, 17.8);
+      flight = lerp(1.32, 1.5, 1 - power);
+      kind = "drop";
+    } else if (power < 0.3 || atKitchen) {
+      ty = p.side === "near" ? rand(25.8, 28.4) : rand(15.6, 18.2);
+      flight = atKitchen ? lerp(0.78, 0.92, 1 - power) : lerp(0.95, 1.12, 1 - power);
+      kind = "dink";
     } else {
-      ty = p.side === "near" ? rand(32, 40) : rand(4, 12);
-      flight = lerp(1.18, 1.0, power);
+      ty = p.side === "near" ? rand(31, 39) : rand(5, 13);
+      flight = lerp(1.08, 0.9, power);
       kind = "drive";
     }
+    p.swingRate = atKitchen || kind === "speedup" || kind === "smash" ? 3.8 : 2.2;
 
     let noise = (p === this.far && this.mode === "cpu" ? DIFF[this.diff].err : 0.4) * (0.2 + d * 0.06);
     if (p === this.far && this.mode === "cpu") {
@@ -689,15 +703,22 @@ export class Game {
 
   launchTo(b, tx, ty, t, noise, style) {
     tx = clamp(tx + rand(-noise, noise), 1.6, 18.4);
-    ty = ty + rand(-noise, noise) * 0.25;
-    if (b.y < NET_Y) ty = clamp(ty, NET_Y + 5.2, 42.2);
-    else ty = clamp(ty, 1.8, NET_Y - 5.2);
+    ty = ty + rand(-noise, noise) * 0.22;
+    const attack = style === "speedup" || style === "smash";
+    if (attack) {
+      if (b.y < NET_Y) ty = clamp(ty, NET_Y + 3.3, 33);
+      else ty = clamp(ty, 11, NET_Y - 3.3);
+    } else if (style === "dink") {
+      if (b.y < NET_Y) ty = clamp(ty, NET_Y + 4.2, NET_Y + 7.1);
+      else ty = clamp(ty, NET_Y - 7.1, NET_Y - 4.2);
+    } else if (b.y < NET_Y) ty = clamp(ty, NET_Y + 5, 42.2);
+    else ty = clamp(ty, 1.8, NET_Y - 5);
 
-    const z0 = Math.max(b.z, 1.15);
+    const z0 = Math.max(b.z, attack ? 2.35 : 1.15);
     const dinkish = style === "dink" || style === "drop" || style === "lob";
-    const tMin = style === "lob" ? 1.5 : style === "drop" || style === "serve" ? 1.2 : dinkish ? 1.05 : 1.0;
+    const tMin = style === "lob" ? 1.5 : style === "drop" || style === "serve" ? 1.18 : style === "dink" ? 0.72 : attack ? 0.44 : 0.88;
     t = clamp(t, tMin, 2.25);
-    const need = style === "lob" ? 6.2 : dinkish || style === "serve" ? 4.7 : 4.15;
+    const need = style === "lob" ? 6.2 : attack ? 3.52 : style === "dink" ? 4.15 : dinkish || style === "serve" ? 4.55 : 4.05;
     let vx = 0,
       vy = 0,
       vz = 0;
@@ -748,9 +769,9 @@ export class Game {
     }
 
     for (const p of [this.near, this.far]) {
-      if (p.charging) p.charge = clamp(p.charge + dt * 0.82, 0, 1);
+      if (p.charging) p.charge = clamp(p.charge + dt * 1.25, 0, 1);
       if (p.swinging) {
-        p.swing += dt * 2.15;
+        p.swing += dt * (p.swingRate || 2.2);
         if (p.swing >= 1) {
           p.swinging = false;
           p.swing = 0;
@@ -815,8 +836,10 @@ export class Game {
       return;
     }
     const mag = Math.hypot(ax, ay);
-    p.vx = (ax / mag) * p.speed;
-    p.vy = (ay / mag) * p.speed;
+    const kit = Math.abs(p.y - (p.side === "near" ? 15 : 29)) < 3.2;
+    const sp = p.speed * (kit ? 1.28 : 1);
+    p.vx = (ax / mag) * sp;
+    p.vy = (ay / mag) * sp;
     p.x += p.vx * dt;
     p.y += p.vy * dt;
   }
@@ -835,7 +858,8 @@ export class Game {
 
   runAI(p, dt) {
     const d = DIFF[this.demo ? "normal" : this.diff];
-    p.speed = d.speed;
+    const atK = Math.abs(p.y - (p.side === "near" ? 15 : 29)) < 3.2;
+    p.speed = d.speed * (atK && this.twoBounceDone() ? 1.4 : this.twoBounceDone() ? 1.18 : 1);
     if (this.phase === "serve") {
       if (p === this.serverPlayer()) {
         this.serveT += dt;
@@ -904,11 +928,14 @@ export class Game {
     const hard = this.diff === "hard" && !this.demo;
     const atK = Math.abs(p.y - (p.side === "near" ? 15 : 29)) < 3.2;
     const third = this.match.serveBounced && !this.match.returnBounced && p.side === this.match.server;
-    if (this.ball.z > 5.4 && Math.abs(p.y - NET_Y) < 11) return 0.88;
+    if (this.ball.z > 5.2 && atK) return 0.85;
     if (third) return 0.18;
-    if (atK) return hard && Math.random() < 0.1 ? 0.62 : 0.16;
-    if (Math.random() < 0.72) return 0.2;
-    return rand(0.22, 0.38);
+    if (atK) {
+      if (this.ball.z > 2.9 && Math.random() < (hard ? 0.4 : this.diff === "easy" ? 0.12 : 0.24)) return 0.7;
+      return 0.14;
+    }
+    if (Math.random() < 0.7) return 0.2;
+    return rand(0.22, 0.4);
   }
 
   moveTo(p, x, y, dt) {
@@ -1046,6 +1073,7 @@ export class Game {
       if (!this.match.returnBounced && side === this.match.server) {
         this.match.returnBounced = true;
         this.syncHud();
+        this.toast("Kitchen!  W to the line · tap dink · hold to speed-up");
       }
     }
   }
