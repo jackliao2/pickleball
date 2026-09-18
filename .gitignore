@@ -10,6 +10,7 @@ _verify_mobile.mjs
 _verify_roster.mjs
 _verify_modes.mjs
 _verify_score.mjs
+_verify_aim.mjs
 _net_sim.mjs
 _shots/
 

@@ -16,7 +16,7 @@ const DIFF = {
 const STAT_LIST = [
   ["speed", "Speed", "Foot speed"],
   ["power", "Power", "Pace on drives and speed-ups"],
-  ["angle", "Angle", "Pull the ball; fewer sprays"],
+  ["angle", "Angle", "Tighter aim, less spray"],
   ["serve", "Serve", "Serve depth and accuracy"],
   ["hands", "Hands", "Kitchen reaction"],
   ["reach", "Reach", "Paddle range"],
@@ -611,6 +611,123 @@ export class Game {
     return false;
   }
 
+  isHuman(p) {
+    return p === this.near || (this.mode === "p2" && p === this.far);
+  }
+
+  closestOpp(p) {
+    const opps = this.allPlayers().filter((o) => o.side !== p.side);
+    let opp = p.side === "near" ? this.far : this.near;
+    if (!opps.length) return opp;
+    opp = opps[0];
+    let best = dist(p.x, p.y, opp.x, opp.y);
+    for (const o of opps) {
+      const d2 = dist(p.x, p.y, o.x, o.y);
+      if (d2 < best) {
+        best = d2;
+        opp = o;
+      }
+    }
+    return opp;
+  }
+
+  aimAxes(p) {
+    let ax = 0;
+    let ay = 0;
+    if (p === this.near) {
+      const arrows = this.mode !== "p2";
+      if (this.keys.has("KeyA") || (arrows && this.keys.has("ArrowLeft"))) ax -= 1;
+      if (this.keys.has("KeyD") || (arrows && this.keys.has("ArrowRight"))) ax += 1;
+      if (this.keys.has("KeyW") || (arrows && this.keys.has("ArrowUp"))) ay += 1;
+      if (this.keys.has("KeyS") || (arrows && this.keys.has("ArrowDown"))) ay -= 1;
+      if (this.stick.active) {
+        ax += this.stick.dx;
+        ay -= this.stick.dy;
+      }
+    } else if (this.mode === "p2" && p === this.far) {
+      if (this.keys.has("ArrowLeft")) ax -= 1;
+      if (this.keys.has("ArrowRight")) ax += 1;
+      if (this.keys.has("ArrowUp")) ay += 1;
+      if (this.keys.has("ArrowDown")) ay -= 1;
+    }
+    return { ax: clamp(ax, -1, 1), ay: clamp(ay, -1, 1) };
+  }
+
+  chooseShotKind(p, b, power) {
+    const kitLine = p.side === "near" ? 15 : 29;
+    const atKitchen = Math.abs(p.y - kitLine) < 3.1;
+    const atBase = p.side === "near" ? p.y < 8 : p.y > 36;
+    const thirdShot = this.match.serveBounced && !this.match.returnBounced && p.side === this.match.server;
+    const { ay } = this.isHuman(p) ? this.aimAxes(p) : { ay: 0 };
+    const wantLob = this.isHuman(p)
+      ? ay > 0.35 && power > 0.35 && !atKitchen
+      : (p.side === "near" ? this.keys.has("KeyW") : this.keys.has("ArrowUp")) && power > 0.35;
+    if (atKitchen && power >= 0.28) return b && b.z > 4.6 ? "smash" : "speedup";
+    if (wantLob) return "lob";
+    if (b && b.z > 5.2 && Math.abs(p.y - NET_Y) < 10 && power >= 0.35) return "smash";
+    if (thirdShot || (atBase && power < 0.45)) return "drop";
+    if (power < 0.3 || atKitchen) return "dink";
+    return "drive";
+  }
+
+  shotFlight(p, kind, power) {
+    const kitLine = p.side === "near" ? 15 : 29;
+    const atKitchen = Math.abs(p.y - kitLine) < 3.1;
+    if (kind === "lob") return lerp(1.45, 1.75, power);
+    if (kind === "smash") return 0.7;
+    if (kind === "speedup") return lerp(0.52, 0.34, power) / (p.powerMul || 1);
+    if (kind === "drop") return lerp(1.32, 1.5, 1 - power);
+    if (kind === "dink") return atKitchen ? lerp(0.78, 0.92, 1 - power) : lerp(0.95, 1.12, 1 - power);
+    return lerp(1.08, 0.9, power);
+  }
+
+  humanLand(p, kind, power, opp) {
+    const { ax, ay } = this.aimAxes(p);
+    const near = p.side === "near";
+    const aimingX = Math.abs(ax) > 0.12;
+    let tx;
+    if (aimingX) tx = 10 + ax * 7.8;
+    else if (kind === "speedup" || kind === "smash") tx = opp ? opp.x : 10;
+    else tx = clamp(lerp(10, 20 - p.x, 0.4), 4.2, 15.8);
+    tx = clamp(tx, 1.8, 18.2);
+
+    let ty;
+    if (kind === "dink" || kind === "drop") {
+      const t = clamp(0.5 + ay * 0.45, 0, 1);
+      ty = near ? lerp(25.5, 28.7, t) : lerp(18.5, 15.3, t);
+    } else if (kind === "lob") {
+      const t = clamp(0.55 + ay * 0.4, 0, 1);
+      ty = near ? lerp(34, 42.4, t) : lerp(10, 1.8, t);
+    } else if (kind === "speedup" || kind === "smash") {
+      const t = clamp(0.4 + ay * 0.5, 0, 1);
+      ty = near ? lerp(26.6, 33.8, t) : lerp(17.4, 10.2, t);
+      if (aimingX) tx = clamp((opp ? opp.x : 10) + ax * 6.8, 2, 18);
+    } else {
+      const t = clamp(0.32 + power * 0.28 + ay * 0.42, 0, 1);
+      ty = near ? lerp(27.4, 41.2, t) : lerp(16.6, 2.8, t);
+    }
+    return { tx, ty };
+  }
+
+  cpuLand(p, b, kind, opp) {
+    const open = opp.x < 10 ? rand(11.5, 17.4) : rand(2.6, 8.5);
+    let tx = clamp(open, 2.2, 17.8);
+    let ty;
+    if (kind === "lob") {
+      ty = p.side === "near" ? rand(37, 42) : rand(2, 7);
+    } else if (kind === "speedup" || kind === "smash") {
+      ty = p.side === "near" ? clamp((opp.y || 30) - 0.3, 27.4, 31.5) : clamp((opp.y || 14) + 0.3, 12.5, 16.6);
+      tx = clamp(opp.x + (Math.random() - 0.5) * 1.2, 3, 17);
+    } else if (kind === "drop") {
+      ty = p.side === "near" ? rand(26.2, 28.6) : rand(15.4, 17.8);
+    } else if (kind === "dink") {
+      ty = p.side === "near" ? rand(25.8, 28.4) : rand(15.6, 18.2);
+    } else {
+      ty = p.side === "near" ? rand(31, 39) : rand(5, 13);
+    }
+    return { tx, ty };
+  }
+
   openRoster(mode) {
     this.pendingMode = mode;
     $("menu").hidden = true;
@@ -1041,64 +1158,22 @@ export class Game {
       p.kitchenWatch = playerInKitchen(p) ? 0 : this.time + 0.42;
     }
 
-    const opps = this.allPlayers().filter((o) => o.side !== p.side);
-    let opp = p.side === "near" ? this.far : this.near;
-    if (opps.length) {
-      opp = opps[0];
-      let best = dist(p.x, p.y, opp.x, opp.y);
-      for (const o of opps) {
-        const d2 = dist(p.x, p.y, o.x, o.y);
-        if (d2 < best) {
-          best = d2;
-          opp = o;
-        }
-      }
-    }
-    const lob = p.side === "near" ? this.keys.has("KeyW") && power > 0.35 : this.keys.has("ArrowUp") && power > 0.35;
-    const kitLine = p.side === "near" ? 15 : 29;
-    const atKitchen = Math.abs(p.y - kitLine) < 3.1;
-    const atBase = p.side === "near" ? p.y < 8 : p.y > 36;
-    const thirdShot = this.match.serveBounced && !this.match.returnBounced && p.side === this.match.server;
-
-    let tx, ty, flight, kind;
-    const open = opp.x < 10 ? rand(11.5, 17.4) : rand(2.6, 8.5);
-    const aimBias = p.side === "near" ? (this.keys.has("KeyD") ? 2.4 : this.keys.has("KeyA") ? -2.4 : 0) : this.keys.has("ArrowRight") ? 2.4 : this.keys.has("ArrowLeft") ? -2.4 : 0;
-    tx = clamp(open + aimBias * (p.angleMul || 1) * 0.7, 2.2, 17.8);
+    const opp = this.closestOpp(p);
+    const kind = this.chooseShotKind(p, b, power);
     p.hand = b.x >= p.x ? 1 : -1;
+    p.swingRate = kind === "speedup" || kind === "smash" ? 3.8 : 2.2;
+    if (kind === "speedup" || kind === "smash") this.shake = 5;
 
-    if (lob) {
-      ty = p.side === "near" ? rand(37, 42) : rand(2, 7);
-      flight = lerp(1.45, 1.75, power);
-      kind = "lob";
-    } else if (atKitchen && power >= 0.28) {
-      ty = p.side === "near" ? clamp(opp.y - 0.3, 27.4, 31.5) : clamp(opp.y + 0.3, 12.5, 16.6);
-      tx = clamp(opp.x + (Math.random() - 0.5) * 1.1 + aimBias * 0.45, 3, 17);
-      flight = lerp(0.52, 0.34, power) / (p.powerMul || 1);
-      kind = b.z > 4.6 ? "smash" : "speedup";
-      this.shake = 5;
-    } else if (b.z > 5.2 && Math.abs(p.y - NET_Y) < 10 && power >= 0.35) {
-      ty = p.side === "near" ? opp.y - 1.0 : opp.y + 1.0;
-      tx = clamp(opp.x + (Math.random() - 0.5) * 1.4, 2, 18);
-      flight = 0.7;
-      kind = "smash";
-      this.shake = 5;
-    } else if (thirdShot || (atBase && power < 0.45)) {
-      ty = p.side === "near" ? rand(26.2, 28.6) : rand(15.4, 17.8);
-      flight = lerp(1.32, 1.5, 1 - power);
-      kind = "drop";
-    } else if (power < 0.3 || atKitchen) {
-      ty = p.side === "near" ? rand(25.8, 28.4) : rand(15.6, 18.2);
-      flight = atKitchen ? lerp(0.78, 0.92, 1 - power) : lerp(0.95, 1.12, 1 - power);
-      kind = "dink";
-    } else {
-      ty = p.side === "near" ? rand(31, 39) : rand(5, 13);
-      flight = lerp(1.08, 0.9, power);
-      kind = "drive";
-    }
-    p.swingRate = atKitchen || kind === "speedup" || kind === "smash" ? 3.8 : 2.2;
+    const land = this.isHuman(p) ? this.humanLand(p, kind, power, opp) : this.cpuLand(p, b, kind, opp);
+    let tx = land.tx;
+    let ty = land.ty;
+    const flight = this.shotFlight(p, kind, power);
 
     const cpu = this.isCpuSide(p);
-    let noise = (cpu ? DIFF[this.diff].err : 0.4) * (0.2 + d * 0.06) * (p.noiseMul || 1);
+    const angle = p.stats?.angle ?? 6;
+    let noise = cpu
+      ? DIFF[this.diff].err * (0.2 + d * 0.06) * (p.noiseMul || 1)
+      : lerp(2.1, 0.4, angle / 10) * (0.55 + d * 0.04);
     if (cpu) {
       tx = clamp(tx, 3.6, 16.4);
       ty = p.side === "far" ? clamp(ty, 3.2, 17.0) : clamp(ty, 27.0, 40.8);
@@ -1291,7 +1366,7 @@ export class Game {
     }
     const mag = Math.hypot(ax, ay);
     const kit = Math.abs(p.y - (p.side === "near" ? 15 : 29)) < 3.2;
-    const sp = p.speed * (kit ? 1.28 : 1);
+    const sp = p.speed * (kit ? 1.28 : 1) * (p.charging ? 0.4 : 1);
     p.vx = (ax / mag) * sp;
     p.vy = (ay / mag) * sp;
     p.x += p.vx * dt;
@@ -1568,7 +1643,7 @@ export class Game {
       if (!this.match.returnBounced && side === this.match.server) {
         this.match.returnBounced = true;
         this.syncHud();
-        this.toast("Kitchen!  W to the line · tap dink · hold to speed-up");
+        this.toast("Kitchen!  A/D aim · W deep · S short · tap dink · hold to speed-up");
       }
     }
   }
@@ -1875,9 +1950,40 @@ export class Game {
     for (const s of sprites) s.draw();
 
     this.drawFx(ctx);
+    if (this.screen === "play" && this.phase === "rally") {
+      if (this.shouldShowAim(this.near)) this.drawAimPip(ctx, this.near);
+      if (this.mode === "p2" && this.shouldShowAim(this.far)) this.drawAimPip(ctx, this.far);
+    }
     if (this.near.charging && this.screen === "play") this.drawCharge(ctx, this.near);
     if (this.far.charging && this.mode === "p2" && this.screen === "play") this.drawCharge(ctx, this.far);
     if (this.phase === "replay") this.drawReplayMark(ctx);
+  }
+
+  shouldShowAim(p) {
+    if (!this.isHuman(p)) return false;
+    if (p.charging) return true;
+    const { ax, ay } = this.aimAxes(p);
+    return Math.abs(ax) > 0.14 || Math.abs(ay) > 0.14;
+  }
+
+  drawAimPip(ctx, p) {
+    const b = this.ball.live ? this.ball : { z: 2, y: p.y + (p.side === "near" ? 2 : -2), x: p.x };
+    const power = p.charging ? p.charge : 0.22;
+    const kind = this.chooseShotKind(p, b, power);
+    const { tx, ty } = this.humanLand(p, kind, power, this.closestOpp(p));
+    const pt = this.project(tx, ty, 0);
+    ctx.save();
+    ctx.translate(pt.sx, pt.sy);
+    ctx.scale(1, 0.42);
+    ctx.beginPath();
+    ctx.arc(0, 0, 12 * pt.s, 0, TAU);
+    const attack = kind === "speedup" || kind === "smash";
+    ctx.fillStyle = attack ? "rgba(228,90,67,0.42)" : "rgba(212,225,87,0.5)";
+    ctx.fill();
+    ctx.strokeStyle = attack ? "#e45a43" : "#d4e157";
+    ctx.lineWidth = 2.2;
+    ctx.stroke();
+    ctx.restore();
   }
 
   drawReplayMark(ctx) {
