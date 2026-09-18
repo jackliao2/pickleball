@@ -197,6 +197,11 @@ class Sfx {
   whistle() {
     this.beep(1200, 0.15, "sine", 0.06, 900);
   }
+  cheer() {
+    this.beep(520, 0.16, "triangle", 0.11, 780);
+    this.beep(660, 0.14, "sine", 0.07, 880);
+    this.noise(0.12, 0.08);
+  }
 }
 
 export class Game {
@@ -230,6 +235,10 @@ export class Game {
     this.deadT = 0;
     this.serveT = 0;
     this.highlightBox = null;
+    this.fx = [];
+    this.hitStop = 0;
+    this.lastKind = "dink";
+    this.meta = this.emptyMeta();
     this.youBuild = { name: "All-court", ...emptyStats() };
     this.oppBuild = { name: "All-court", ...emptyStats() };
     this.pendingMode = "cpu";
@@ -305,7 +314,12 @@ export class Game {
       serveBounced: false,
       returnBounced: false,
       targetRight: true,
+      switched: false,
     };
+  }
+
+  emptyMeta() {
+    return { longest: 0, aces: 0, winners: 0, speedups: 0, kitchen: 0 };
   }
 
   bind() {
@@ -500,6 +514,7 @@ export class Game {
     $("name-near").textContent = this.youBuild.name || "YOU";
     $("name-far").textContent = mode === "p2" ? this.oppBuild.name || "P2" : this.oppBuild.name || "CPU";
     this.match = this.freshMatch();
+    this.meta = this.emptyMeta();
     this.resetPoint(true);
     this.flash("PLAY", 0.8);
     this.sfx.whistle();
@@ -769,7 +784,6 @@ export class Game {
       return;
     }
     const receiver = p.side === "near" ? "far" : "near";
-    const tx = even ? (receiver === "far" ? 5 : 15) : receiver === "far" ? 15 : 5;
     const serve = p.serveSkill ?? 6;
     const deep = receiver === "far" ? lerp(33, 40, serve / 10) : lerp(11, 4, serve / 10);
     const ty = receiver === "far" ? rand(deep - 2.2, Math.min(41.5, deep + 2)) : rand(Math.max(2.2, deep - 2), deep + 2.2);
@@ -781,7 +795,10 @@ export class Game {
     this.ball.z = 1.9;
     p.shotKind = "serve";
     p.hand = 1;
-    this.launchTo(this.ball, tx + rand(-0.55 + serve * 0.03, 0.55 - serve * 0.03), ty, t, 0.28 - serve * 0.02, "serve");
+    const boxL = even ? (receiver === "far" ? 0 : 10) : receiver === "far" ? 10 : 0;
+    const boxR = boxL + 10;
+    const aimed = clamp(20 - p.x, boxL + 1.4, boxR - 1.4);
+    this.launchTo(this.ball, aimed + rand(-0.45 + serve * 0.03, 0.45 - serve * 0.03), ty, t, 0.26 - serve * 0.02, "serve");
     this.ball.lastHit = p.side;
     this.phase = "rally";
     this.rallyLen = 1;
@@ -789,7 +806,8 @@ export class Game {
     p.swinging = true;
     p.swing = 0.01;
     this.sfx.hit(0.35, "serve");
-    this.toast(even ? "Even court · diagonal" : "Odd court · diagonal");
+    this.lastKind = "serve";
+    this.toast(p === this.near ? "A/D aims the box · SPACE serves" : "Even court · diagonal");
   }
 
   doSwing(p, power) {
@@ -879,12 +897,15 @@ export class Game {
       noise *= 0.3;
     }
     p.shotKind = kind;
+    this.lastKind = kind;
     this.launchTo(b, tx, ty, flight, noise, kind);
     b.lastHit = p.side;
     b.lastBounceSide = null;
     b.bouncesSide = 0;
     this.rallyLen += 1;
     this.sfx.hit(power, kind);
+    this.spawnBurst(b.x, b.y, b.z, kind === "speedup" || kind === "smash" ? "#ffe082" : "#d4e157", kind === "speedup" ? 14 : 8);
+    if (kind === "speedup" || kind === "smash") this.hitStop = 0.055;
     try {
       navigator.vibrate?.(12);
     } catch {
@@ -1160,11 +1181,14 @@ export class Game {
     const hard = this.diff === "hard" && !this.demo;
     const atK = Math.abs(p.y - (p.side === "near" ? 15 : 29)) < 3.2;
     const third = this.match.serveBounced && !this.match.returnBounced && p.side === this.match.server;
+    const pow = p.stats?.power ?? 6;
+    const hands = p.hands ?? 6;
     if (this.ball.z > 5.2 && atK) return 0.85;
-    if (third) return 0.18;
+    if (third) return 0.16;
     if (atK) {
-      if (this.ball.z > 2.9 && Math.random() < (hard ? 0.4 : this.diff === "easy" ? 0.12 : 0.24)) return 0.7;
-      return 0.14;
+      const attack = 0.06 + pow * 0.032 + (hard ? 0.08 : 0) + hands * 0.01;
+      if (this.ball.z > 2.8 && Math.random() < attack) return 0.72;
+      return 0.13;
     }
     if (Math.random() < 0.7) return 0.2;
     return rand(0.22, 0.4);
@@ -1318,14 +1342,35 @@ export class Game {
     this.highlightBox = null;
     if (this.demo || this.screen === "menu") return;
 
+    if (this.rallyLen > this.meta.longest) this.meta.longest = this.rallyLen;
+    if (this.lastKind === "speedup" || this.lastKind === "smash") this.meta.speedups += 1;
+    if (reason === "kitchen") this.meta.kitchen += 1;
+
     const server = this.match.server;
     if (faulter === server) {
       this.match.server = server === "near" ? "far" : "near";
       this.toast("Side out");
     } else {
       this.match[server] += 1;
-      this.sfx.point();
-      this.toast("Point");
+      this.sfx.cheer();
+      const opp = faulter === "near" ? this.near : this.far;
+      const farFromBall = dist(opp.x, opp.y, this.ball.x, this.ball.y) > 3.4;
+      if (this.rallyLen <= 1) {
+        this.meta.aces += 1;
+        this.flash("ACE", 1.15);
+      } else if ((this.lastKind === "speedup" || this.lastKind === "smash") && farFromBall) {
+        this.meta.winners += 1;
+        this.flash("WINNER", 1.1);
+      } else if (this.rallyLen >= 8) {
+        this.flash("HANDS", 1);
+        this.toast("Kitchen battle");
+      } else {
+        this.toast("Point");
+      }
+    }
+    if (!this.match.switched && (this.match.near === 6 || this.match.far === 6)) {
+      this.match.switched = true;
+      this.toast("6 — switch sides");
     }
     this.syncHud();
     this.checkWin();
@@ -1340,8 +1385,10 @@ export class Game {
       this.deadT = 999;
       $("over").hidden = false;
       $("over-title").textContent = a > b ? "You win" : this.mode === "p2" ? "Player 2 wins" : "CPU wins";
+      const m = this.meta;
       $("over-sub").textContent = `${a} – ${b}`;
       $("over-kicker").textContent = "Game to 11 · win by 2";
+      $("over-stats").textContent = `Longest rally ${m.longest} · ${m.aces} ace${m.aces === 1 ? "" : "s"} · ${m.winners} winner${m.winners === 1 ? "" : "s"} · ${m.speedups} speed-ups`;
       this.sfx.whistle();
     }
   }
@@ -1378,7 +1425,10 @@ export class Game {
     let dt = (now - this._last) / 1000;
     this._last = now;
     dt = Math.min(dt, 0.05);
-    if (!this.paused && this.screen !== "over") this.update(dt);
+    if (this.hitStop > 0) {
+      this.hitStop -= dt;
+      this.updateFx(dt);
+    } else if (!this.paused && this.screen !== "over") this.update(dt);
     this.draw();
     requestAnimationFrame(this.loop);
   }
@@ -1395,6 +1445,7 @@ export class Game {
       this.toastT -= dt;
       if (this.toastT <= 0) $("toast").classList.remove("show");
     }
+    this.updateFx(dt);
 
     if (this.phase === "dead") {
       this.deadT -= dt;
@@ -1436,8 +1487,48 @@ export class Game {
     sprites.sort((a, b) => b.y - a.y);
     for (const s of sprites) s.draw();
 
+    this.drawFx(ctx);
     if (this.near.charging && this.screen === "play") this.drawCharge(ctx, this.near);
     if (this.far.charging && this.mode === "p2" && this.screen === "play") this.drawCharge(ctx, this.far);
+  }
+
+  spawnBurst(x, y, z, color, n) {
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * TAU;
+      this.fx.push({
+        x,
+        y,
+        z: z + 0.2,
+        vx: Math.cos(a) * rand(2, 8),
+        vy: Math.sin(a) * rand(1, 5),
+        vz: rand(2, 9),
+        life: rand(0.22, 0.45),
+        color,
+      });
+    }
+  }
+
+  updateFx(dt) {
+    for (const f of this.fx) {
+      f.life -= dt;
+      f.x += f.vx * dt;
+      f.y += f.vy * dt;
+      f.z += f.vz * dt;
+      f.vz -= 22 * dt;
+    }
+    this.fx = this.fx.filter((f) => f.life > 0);
+  }
+
+  drawFx(ctx) {
+    for (const f of this.fx) {
+      const p = this.project(f.x, f.y, Math.max(0, f.z));
+      ctx.globalAlpha = clamp(f.life * 3, 0, 0.9);
+      ctx.fillStyle = f.color;
+      ctx.beginPath();
+      ctx.arc(p.sx, p.sy, 3.2 * p.s, 0, TAU);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    }
   }
 
   drawSky(ctx) {
@@ -1569,6 +1660,14 @@ export class Game {
     ctx.setLineDash([6, 5]);
     ctx.stroke();
     ctx.setLineDash([]);
+    const s = this.serverPlayer();
+    const aimX = clamp(20 - s.x, x0 + 1.5, x1 - 1.5);
+    const aimY = (y0 + y1) / 2;
+    const pip = P(aimX, aimY);
+    ctx.beginPath();
+    ctx.arc(pip.sx, pip.sy, 7, 0, TAU);
+    ctx.fillStyle = "rgba(212,225,87,0.85)";
+    ctx.fill();
   }
 
   drawLanding(ctx) {
@@ -1595,8 +1694,8 @@ export class Game {
     ctx.translate(p.sx, p.sy);
     ctx.scale(1, 0.38);
     ctx.beginPath();
-    ctx.arc(0, 0, (9 + b.z * 0.35) * p.s, 0, TAU);
-    ctx.fillStyle = `rgba(0,0,0,${0.28 + Math.min(b.z, 8) * 0.02})`;
+    ctx.arc(0, 0, (12 + b.z * 0.55) * p.s, 0, TAU);
+    ctx.fillStyle = `rgba(0,0,0,${0.34 + Math.min(b.z, 8) * 0.03})`;
     ctx.fill();
     ctx.restore();
     const a = this.project(b.x, b.y, 0);
