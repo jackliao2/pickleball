@@ -186,6 +186,52 @@ canvas {
   backdrop-filter: blur(16px);
 }
 .card.wide { width: min(640px, 100%); max-height: min(86dvh, 820px); overflow: auto; }
+.roster-card {
+  width: min(860px, 100%);
+  max-height: min(90dvh, 920px);
+  overflow: auto;
+}
+.roster-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin: 8px 0 14px;
+}
+.build {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 12px 12px 10px;
+}
+.build-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.build-head h3 { margin: 0; font-size: 13px; }
+.budget { font-size: 12px; font-weight: 700; color: var(--yellow); }
+.budget.over { color: var(--coral); }
+.presets { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 10px; }
+.presets button {
+  font: 650 11px Outfit, sans-serif;
+  letter-spacing: 0.04em;
+  color: var(--paper);
+  background: rgba(255,255,255,0.06);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 4px 8px;
+  cursor: pointer;
+}
+.presets button.on { background: var(--yellow); color: var(--ink); border-color: var(--yellow); }
+.stat-row { display: grid; grid-template-columns: 72px 1fr 22px; gap: 8px; align-items: center; margin: 5px 0; }
+.stat-row label { font-size: 12px; font-weight: 600; }
+.stat-row input[type="range"] { width: 100%; accent-color: var(--yellow); }
+.stat-row .n { font-family: "Barlow Condensed", sans-serif; font-size: 18px; font-weight: 800; text-align: right; }
+
+@media (max-width: 700px) {
+  .roster-grid { grid-template-columns: 1fr; }
+}
 
 .kicker {
   font-size: 12px;

@@ -13,6 +13,48 @@ const DIFF = {
   hard: { speed: 9.8, err: 0.45, react: 0.12 },
 };
 
+const STAT_LIST = [
+  ["speed", "Speed", "Foot speed"],
+  ["power", "Power", "Pace on drives and speed-ups"],
+  ["angle", "Angle", "Pull the ball; fewer sprays"],
+  ["serve", "Serve", "Serve depth and accuracy"],
+  ["hands", "Hands", "Kitchen reaction"],
+  ["reach", "Reach", "Paddle range"],
+];
+const STAT_IDS = STAT_LIST.map((s) => s[0]);
+const STAT_BUDGET = 36;
+const PRESETS = {
+  balanced: { name: "All-court", speed: 6, power: 6, angle: 6, serve: 6, hands: 6, reach: 6 },
+  kitchen: { name: "Kitchen", speed: 5, power: 4, angle: 8, serve: 4, hands: 9, reach: 6 },
+  banger: { name: "Banger", speed: 7, power: 10, angle: 3, serve: 7, hands: 4, reach: 5 },
+  touch: { name: "Touch", speed: 5, power: 3, angle: 9, serve: 5, hands: 8, reach: 6 },
+  athlete: { name: "Athlete", speed: 9, power: 6, angle: 5, serve: 5, hands: 6, reach: 5 },
+  cannon: { name: "Cannon", speed: 4, power: 9, angle: 4, serve: 10, hands: 4, reach: 5 },
+};
+
+function emptyStats() {
+  return { speed: 6, power: 6, angle: 6, serve: 6, hands: 6, reach: 6 };
+}
+function statSum(st) {
+  return STAT_IDS.reduce((n, id) => n + (st[id] || 0), 0);
+}
+function rollStats() {
+  const st = Object.fromEntries(STAT_IDS.map((id) => [id, 2]));
+  let left = STAT_BUDGET - 12;
+  let guard = 0;
+  while (left > 0 && guard++ < 80) {
+    const id = STAT_IDS[(Math.random() * STAT_IDS.length) | 0];
+    if (st[id] < 10) {
+      st[id] += 1;
+      left -= 1;
+    }
+  }
+  return st;
+}
+function cloneStats(st) {
+  return { ...st };
+}
+
 const $ = (id) => document.getElementById(id);
 
 function clamp(v, a, b) {
@@ -188,6 +230,9 @@ export class Game {
     this.deadT = 0;
     this.serveT = 0;
     this.highlightBox = null;
+    this.youBuild = { name: "All-court", ...emptyStats() };
+    this.oppBuild = { name: "All-court", ...emptyStats() };
+    this.pendingMode = "cpu";
 
     this.bind();
     this.resize();
@@ -205,6 +250,14 @@ export class Game {
       vx: 0,
       vy: 0,
       speed: 9.1,
+      baseSpeed: 9.1,
+      powerMul: 1,
+      angleMul: 1,
+      noiseMul: 1,
+      serveSkill: 6,
+      hands: 6,
+      reachFt: 2.35,
+      stats: emptyStats(),
       charge: 0,
       charging: false,
       swing: 0,
@@ -292,8 +345,10 @@ export class Game {
       }
     });
 
-    $("btn-cpu").onclick = () => this.startMatch("cpu");
-    $("btn-p2").onclick = () => this.startMatch("p2");
+    $("btn-cpu").onclick = () => this.openRoster("cpu");
+    $("btn-p2").onclick = () => this.openRoster("p2");
+    $("btn-start-match").onclick = () => this.confirmRoster();
+    $("btn-roster-back").onclick = () => this.closeRoster();
     $("btn-howto").onclick = () => this.showHowTo(true);
     $("btn-howto-close").onclick = () => this.showHowTo(false);
     $("btn-pause").onclick = () => this.togglePause();
@@ -312,6 +367,7 @@ export class Game {
     });
 
     this.bindTouch();
+    this.buildRosterUI();
     document.body.classList.add("menu-open");
   }
 
@@ -432,19 +488,149 @@ export class Game {
     this.demo = false;
     this.screen = "play";
     this.paused = false;
+    this.applyBuild(this.near, this.youBuild);
+    this.applyBuild(this.far, this.oppBuild);
     document.body.classList.remove("menu-open");
     $("menu").hidden = true;
+    $("roster").hidden = true;
     $("howto").hidden = true;
     $("pause").hidden = true;
     $("over").hidden = true;
     $("hud").hidden = false;
-    $("name-near").textContent = "YOU";
-    $("name-far").textContent = mode === "p2" ? "P2" : "CPU";
+    $("name-near").textContent = this.youBuild.name || "YOU";
+    $("name-far").textContent = mode === "p2" ? this.oppBuild.name || "P2" : this.oppBuild.name || "CPU";
     this.match = this.freshMatch();
     this.resetPoint(true);
     this.flash("PLAY", 0.8);
     this.sfx.whistle();
     this.syncHud();
+  }
+
+  applyBuild(p, build) {
+    const st = { ...emptyStats(), ...build };
+    p.stats = st;
+    p.baseSpeed = 6.5 + st.speed * 0.5;
+    p.speed = p.baseSpeed;
+    p.powerMul = 0.84 + st.power * 0.046;
+    p.angleMul = 0.4 + st.angle * 0.12;
+    p.noiseMul = Math.max(0.35, 1.4 - st.angle * 0.09);
+    p.serveSkill = st.serve;
+    p.hands = st.hands;
+    p.reachFt = 1.95 + st.reach * 0.08;
+  }
+
+  canContact(p, b) {
+    if (!b || !b.live) return false;
+    const reach = p.reachFt || 2.35;
+    const dx = b.x - p.x;
+    const dy = b.y - p.y;
+    const forward = p.side === "near" ? dy : -dy;
+    if (forward < -0.2 || forward > reach + 0.12) return false;
+    if (Math.abs(dx) > reach * 0.72) return false;
+    if (Math.hypot(dx, dy) > reach) return false;
+    if (b.z < 0.22 || b.z > 4.7) return false;
+    return true;
+  }
+
+  openRoster(mode) {
+    this.pendingMode = mode;
+    $("menu").hidden = true;
+    $("howto").hidden = true;
+    $("roster").hidden = false;
+    $("opp-label").textContent = mode === "p2" ? "Player 2" : "Opponent";
+    if (mode === "cpu") {
+      const map = { easy: "touch", normal: "balanced", hard: "kitchen" };
+      this.setBuild("opp", PRESETS[map[this.diff] || "balanced"], map[this.diff] || "balanced");
+    }
+    this.refreshRoster();
+  }
+
+  closeRoster() {
+    $("roster").hidden = true;
+    $("menu").hidden = false;
+  }
+
+  confirmRoster() {
+    if (statSum(this.youBuild) > STAT_BUDGET || statSum(this.oppBuild) > STAT_BUDGET) return;
+    this.startMatch(this.pendingMode);
+  }
+
+  setBuild(who, stats, presetId) {
+    const name = stats.name || (presetId === "random" ? "Random" : "Custom");
+    const next = { name, ...cloneStats(stats) };
+    delete next.name;
+    const build = { name, ...next };
+    if (who === "you") this.youBuild = build;
+    else this.oppBuild = build;
+    this.refreshRoster(presetId ? { [who]: presetId } : null);
+  }
+
+  buildRosterUI() {
+    for (const who of ["you", "opp"]) {
+      const presets = $(`presets-${who}`);
+      presets.innerHTML = "";
+      for (const [id, pre] of Object.entries(PRESETS)) {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.dataset.id = id;
+        b.textContent = pre.name;
+        b.onclick = () => this.setBuild(who, pre, id);
+        presets.appendChild(b);
+      }
+      const r = document.createElement("button");
+      r.type = "button";
+      r.textContent = "Random";
+      r.onclick = () => this.setBuild(who, { name: "Random", ...rollStats() }, "random");
+      presets.appendChild(r);
+      const list = $(`stats-${who}`);
+      list.innerHTML = "";
+      for (const [id, label] of STAT_LIST) {
+        const row = document.createElement("div");
+        row.className = "stat-row";
+        row.innerHTML = `<label>${label}</label><input type="range" min="2" max="10" step="1" data-stat="${id}" /><span class="n">6</span>`;
+        const input = row.querySelector("input");
+        input.oninput = () => this.onStatSlide(who, id, +input.value);
+        list.appendChild(row);
+      }
+    }
+    this.refreshRoster();
+  }
+
+  onStatSlide(who, id, val) {
+    const build = who === "you" ? this.youBuild : this.oppBuild;
+    const prev = build[id];
+    build[id] = val;
+    let extra = statSum(build) - STAT_BUDGET;
+    if (extra > 0) {
+      for (const other of STAT_IDS) {
+        if (other === id || extra <= 0) continue;
+        const take = Math.min(build[other] - 2, extra);
+        build[other] -= take;
+        extra -= take;
+      }
+      if (extra > 0) build[id] = prev;
+    }
+    build.name = "Custom";
+    this.refreshRoster();
+  }
+
+  refreshRoster() {
+    for (const who of ["you", "opp"]) {
+      const build = who === "you" ? this.youBuild : this.oppBuild;
+      const sum = statSum(build);
+      const bud = $(`budget-${who}`);
+      bud.textContent = `${sum} / ${STAT_BUDGET}`;
+      bud.classList.toggle("over", sum > STAT_BUDGET);
+      $(`stats-${who}`).querySelectorAll("input[data-stat]").forEach((input) => {
+        const id = input.dataset.stat;
+        input.value = String(build[id]);
+        input.parentElement.querySelector(".n").textContent = String(build[id]);
+      });
+      $(`presets-${who}`).querySelectorAll("button").forEach((b) => {
+        b.classList.toggle("on", b.textContent === build.name);
+      });
+    }
+    $("btn-start-match").disabled = statSum(this.youBuild) > STAT_BUDGET || statSum(this.oppBuild) > STAT_BUDGET;
   }
 
   toMenu() {
@@ -453,6 +639,7 @@ export class Game {
     this.paused = false;
     document.body.classList.add("menu-open");
     $("menu").hidden = false;
+    $("roster").hidden = true;
     $("pause").hidden = true;
     $("over").hidden = true;
     $("howto").hidden = true;
@@ -583,8 +770,10 @@ export class Game {
     }
     const receiver = p.side === "near" ? "far" : "near";
     const tx = even ? (receiver === "far" ? 5 : 15) : receiver === "far" ? 15 : 5;
-    const ty = receiver === "far" ? rand(32.5, 41) : rand(3, 11.5);
-    const t = lerp(1.38, 1.18, power);
+    const serve = p.serveSkill ?? 6;
+    const deep = receiver === "far" ? lerp(33, 40, serve / 10) : lerp(11, 4, serve / 10);
+    const ty = receiver === "far" ? rand(deep - 2.2, Math.min(41.5, deep + 2)) : rand(Math.max(2.2, deep - 2), deep + 2.2);
+    const t = lerp(1.36, 1.12, power * (0.7 + serve * 0.03));
     this.ball.held = false;
     this.ball.live = true;
     this.ball.x = p.x + 0.4;
@@ -592,7 +781,7 @@ export class Game {
     this.ball.z = 1.9;
     p.shotKind = "serve";
     p.hand = 1;
-    this.launchTo(this.ball, tx + rand(-0.35, 0.35), ty, t, 0.18 + (1 - power) * 0.18, "serve");
+    this.launchTo(this.ball, tx + rand(-0.55 + serve * 0.03, 0.55 - serve * 0.03), ty, t, 0.28 - serve * 0.02, "serve");
     this.ball.lastHit = p.side;
     this.phase = "rally";
     this.rallyLen = 1;
@@ -608,10 +797,12 @@ export class Game {
     p.swing = 0.01;
     const b = this.ball;
     if (!b.live) return;
-    const reach = 4.1;
+    const sideOk = p.side === "near" ? b.y <= NET_Y + 0.25 : b.y >= NET_Y - 0.25;
+    if (!sideOk || !this.canContact(p, b)) {
+      if (p === this.near && this.screen === "play") this.toast("Whiff");
+      return;
+    }
     const d = dist(p.x, p.y, b.x, b.y);
-    const sideOk = p.side === "near" ? b.y <= NET_Y + 0.45 : b.y >= NET_Y - 0.45;
-    if (!sideOk || d > reach + 0.7 || b.z > 8.5 || b.z < -0.05) return;
 
     const volley = b.z > 0.42 && this.ball.lastBounceSide !== p.side;
     if (volley && playerInKitchen(p)) {
@@ -647,7 +838,7 @@ export class Game {
     let tx, ty, flight, kind;
     const open = opp.x < 10 ? rand(11.5, 17.4) : rand(2.6, 8.5);
     const aimBias = p.side === "near" ? (this.keys.has("KeyD") ? 2.4 : this.keys.has("KeyA") ? -2.4 : 0) : this.keys.has("ArrowRight") ? 2.4 : this.keys.has("ArrowLeft") ? -2.4 : 0;
-    tx = clamp(open + aimBias * 0.7, 2.2, 17.8);
+    tx = clamp(open + aimBias * (p.angleMul || 1) * 0.7, 2.2, 17.8);
     p.hand = b.x >= p.x ? 1 : -1;
 
     if (lob) {
@@ -657,7 +848,7 @@ export class Game {
     } else if (atKitchen && power >= 0.28) {
       ty = p.side === "near" ? clamp(opp.y - 0.3, 27.4, 31.5) : clamp(opp.y + 0.3, 12.5, 16.6);
       tx = clamp(opp.x + (Math.random() - 0.5) * 1.1 + aimBias * 0.45, 3, 17);
-      flight = lerp(0.52, 0.34, power);
+      flight = lerp(0.52, 0.34, power) / (p.powerMul || 1);
       kind = b.z > 4.6 ? "smash" : "speedup";
       this.shake = 5;
     } else if (b.z > 5.2 && Math.abs(p.y - NET_Y) < 10 && power >= 0.35) {
@@ -681,7 +872,7 @@ export class Game {
     }
     p.swingRate = atKitchen || kind === "speedup" || kind === "smash" ? 3.8 : 2.2;
 
-    let noise = (p === this.far && this.mode === "cpu" ? DIFF[this.diff].err : 0.4) * (0.2 + d * 0.06);
+    let noise = (p === this.far && this.mode === "cpu" ? DIFF[this.diff].err : 0.4) * (0.2 + d * 0.06) * (p.noiseMul || 1);
     if (p === this.far && this.mode === "cpu") {
       tx = clamp(tx, 3.6, 16.4);
       ty = p.side === "far" ? clamp(ty, 3.2, 17.0) : clamp(ty, 27.0, 40.8);
@@ -901,11 +1092,12 @@ export class Game {
   runAI(p, dt) {
     const d = DIFF[this.demo ? "normal" : this.diff];
     const atK = Math.abs(p.y - (p.side === "near" ? 15 : 29)) < 3.2;
-    p.speed = d.speed * (atK && this.twoBounceDone() ? 1.4 : this.twoBounceDone() ? 1.18 : 1);
+    const base = p.baseSpeed || d.speed;
+    p.speed = base * (atK && this.twoBounceDone() ? 1.32 : this.twoBounceDone() ? 1.12 : 1);
     if (this.phase === "serve") {
       if (p === this.serverPlayer()) {
         this.serveT += dt;
-        const delay = this.demo ? 0.7 : p.side === "far" ? 1.05 : 99;
+        const delay = this.demo ? 0.7 : p.side === "far" ? Math.max(0.45, 1.25 - (p.hands || 6) * 0.07) : 99;
         if (this.serveT > delay) {
           this.doServe(p, rand(0.45, 0.72));
         }
@@ -939,9 +1131,7 @@ export class Game {
         ty = land.y + (p.side === "near" ? -0.8 : 0.8);
       }
       this.moveTo(p, land.x + rand(-d.err, d.err) * 0.2, ty, dt);
-      const reach = 4.1;
-      const close = dist(p.x, p.y, this.ball.x, this.ball.y) < reach + 0.7;
-      const zone = this.ball.z < 7 && this.ball.z > 0.22;
+      const close = this.canContact(p, this.ball);
       const mustLetBounce =
         (p.side !== this.match.server && !this.match.serveBounced) ||
         (p.side === this.match.server && !this.match.returnBounced);
@@ -950,7 +1140,7 @@ export class Game {
         /* wait for the two-bounce rule */
       } else if (volley && playerInKitchen(p)) {
         this.moveTo(p, p.x, outY, dt);
-      } else if (close && zone && !p.swinging) {
+      } else if (close && !p.swinging) {
         if (volley && playerInKitchen(p)) {
           this.moveTo(p, p.x, outY, dt);
         } else {

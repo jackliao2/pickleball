@@ -79,6 +79,34 @@
       </div>
     </div>
 
+    <div id="roster" class="overlay" hidden>
+      <div class="card roster-card">
+        <p class="kicker">Build the match</p>
+        <h2>You vs them</h2>
+        <p class="lede">36 points across six stats. Tune the sliders, pick a preset, or roll random. Reach is real — if the paddle is not there, it is a whiff.</p>
+        <div class="roster-grid">
+          <div class="build" data-who="you">
+            <div class="build-head">
+              <h3>You</h3>
+              <span class="budget" id="budget-you">36 / 36</span>
+            </div>
+            <div class="presets" id="presets-you"></div>
+            <div class="stat-list" id="stats-you"></div>
+          </div>
+          <div class="build" data-who="opp">
+            <div class="build-head">
+              <h3 id="opp-label">Opponent</h3>
+              <span class="budget" id="budget-opp">36 / 36</span>
+            </div>
+            <div class="presets" id="presets-opp"></div>
+            <div class="stat-list" id="stats-opp"></div>
+          </div>
+        </div>
+        <button type="button" class="btn primary" id="btn-start-match">Start match</button>
+        <button type="button" class="btn ghost" id="btn-roster-back">Back</button>
+      </div>
+    </div>
+
     <div id="howto" class="overlay" hidden>
       <div class="card wide">
         <h2>How this match is scored</h2>
