@@ -224,6 +224,38 @@ canvas {
   cursor: pointer;
 }
 .presets button.on { background: var(--yellow); color: var(--ink); border-color: var(--yellow); }
+.look-box { margin: 0 0 10px; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+.look-row {
+  display: grid;
+  grid-template-columns: 72px 1fr;
+  gap: 8px;
+  align-items: center;
+  margin: 5px 0;
+}
+.look-row > span { font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; opacity: 0.75; }
+.swatches, .look-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.swatch {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  padding: 0;
+  cursor: pointer;
+}
+.swatch.on { border-color: var(--yellow); box-shadow: 0 0 0 2px rgba(212,225,87,0.35); }
+.look-chips button {
+  font: 650 10px Outfit, sans-serif;
+  letter-spacing: 0.04em;
+  color: var(--paper);
+  background: rgba(255,255,255,0.06);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 3px 7px;
+  cursor: pointer;
+  text-transform: capitalize;
+}
+.look-chips button.on { background: var(--yellow); color: var(--ink); border-color: var(--yellow); }
+.look-random { width: 100%; margin-top: 6px; padding: 6px 8px !important; font-size: 12px !important; }
 .stat-row { display: grid; grid-template-columns: 72px 1fr 22px; gap: 8px; align-items: center; margin: 5px 0; }
 .stat-row label { font-size: 12px; font-weight: 600; }
 .stat-row input[type="range"] { width: 100%; accent-color: var(--yellow); }

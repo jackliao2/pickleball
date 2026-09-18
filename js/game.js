@@ -31,6 +31,47 @@ const PRESETS = {
   athlete: { name: "Athlete", speed: 9, power: 6, angle: 5, serve: 5, hands: 6, reach: 5 },
   cannon: { name: "Cannon", speed: 4, power: 9, angle: 4, serve: 10, hands: 4, reach: 5 },
 };
+const SKINS = ["#f3d1b0", "#e2b08c", "#c99272", "#a56b45", "#7a4a2e", "#4d2e1c"];
+const SHIRTS = ["#1aa39a", "#e45a43", "#3d7ea6", "#d4e157", "#f4f1e8", "#7b5ea7", "#e07a3d", "#222222", "#2f6f4e", "#c43c6a"];
+const SHORTS = ["#16385c", "#f0e6d4", "#222222", "#3a3a3a", "#1aa39a", "#6b3f1f", "#eeeeee", "#2b4c7e"];
+const HAT_COLORS = ["#f4f1e8", "#1a1a1a", "#e45a43", "#1aa39a", "#d4e157", "#3d7ea6"];
+const HAIR_COLORS = ["#1a1a1a", "#3b2a1a", "#6b4423", "#c4a574", "#e8d5a3", "#2c4a6e", "#888888"];
+const SHOES = ["#efe6d8", "#222222", "#e45a43", "#1aa39a", "#f4f1e8"];
+const HATS = ["visor", "cap", "band", "none"];
+const HAIR_STYLES = ["short", "fade", "bun", "pony", "bald"];
+const LOOK_KEY = "pb-look-v1";
+
+const DEFAULT_YOU_LOOK = {
+  skin: "#e2b08c",
+  shirt: "#1aa39a",
+  shorts: "#16385c",
+  visor: "#f4f1e8",
+  paddle: "#1aa39a",
+  hair: "#3b2a1a",
+  shoes: "#efe6d8",
+  hat: "visor",
+  hairStyle: "short",
+};
+
+function randomLook() {
+  const shirt = SHIRTS[(Math.random() * SHIRTS.length) | 0];
+  return {
+    skin: SKINS[(Math.random() * SKINS.length) | 0],
+    shirt,
+    shorts: SHORTS[(Math.random() * SHORTS.length) | 0],
+    visor: HAT_COLORS[(Math.random() * HAT_COLORS.length) | 0],
+    paddle: SHIRTS[(Math.random() * SHIRTS.length) | 0],
+    hair: HAIR_COLORS[(Math.random() * HAIR_COLORS.length) | 0],
+    shoes: SHOES[(Math.random() * SHOES.length) | 0],
+    hat: HATS[(Math.random() * HATS.length) | 0],
+    hairStyle: HAIR_STYLES[(Math.random() * HAIR_STYLES.length) | 0],
+  };
+}
+
+function tintLook(look, amt) {
+  return { ...look, shirt: shadeHex(look.shirt, amt), paddle: shadeHex(look.paddle || look.shirt, amt) };
+}
+
 const TOURNAMENT = [
   {
     round: "Qualifier",
@@ -39,6 +80,7 @@ const TOURNAMENT = [
     blurb: "Soft dinks, slow feet, almost never attacks. A warm-up.",
     diff: "easy",
     stats: { speed: 3, power: 2, angle: 5, serve: 3, hands: 4, reach: 4 },
+    look: { skin: "#c99272", shirt: "#f4f1e8", shorts: "#6b3f1f", visor: "#f4f1e8", paddle: "#e07a3d", hair: "#1a1a1a", shoes: "#efe6d8", hat: "visor", hairStyle: "fade" },
   },
   {
     round: "Round of 8",
@@ -47,6 +89,7 @@ const TOURNAMENT = [
     blurb: "Gets the ball back. Little pace. Keep it deep and you are fine.",
     diff: "easy",
     stats: { speed: 4, power: 3, angle: 5, serve: 4, hands: 4, reach: 4 },
+    look: { skin: "#e2b08c", shirt: "#3d7ea6", shorts: "#222222", visor: "#1a1a1a", paddle: "#3d7ea6", hair: "#3b2a1a", shoes: "#222222", hat: "cap", hairStyle: "short" },
   },
   {
     round: "Quarterfinal",
@@ -55,6 +98,7 @@ const TOURNAMENT = [
     blurb: "Runs the court, still learning the kitchen. Medium pace, not a banger.",
     diff: "easy",
     stats: { speed: 5, power: 4, angle: 5, serve: 4, hands: 5, reach: 5 },
+    look: { skin: "#a56b45", shirt: "#d4e157", shorts: "#222222", visor: "#d4e157", paddle: "#222222", hair: "#1a1a1a", shoes: "#e45a43", hat: "band", hairStyle: "fade" },
   },
   {
     round: "Semifinal",
@@ -63,6 +107,7 @@ const TOURNAMENT = [
     blurb: "Lives at the NVZ. Soft hands, blocks, then speed-ups when you pop it up.",
     diff: "normal",
     stats: { speed: 5, power: 4, angle: 7, serve: 4, hands: 7, reach: 5 },
+    look: { skin: "#f3d1b0", shirt: "#c43c6a", shorts: "#eeeeee", visor: "#c43c6a", paddle: "#f4f1e8", hair: "#1a1a1a", shoes: "#f4f1e8", hat: "visor", hairStyle: "bun" },
   },
   {
     round: "Final",
@@ -71,6 +116,7 @@ const TOURNAMENT = [
     blurb: "Big drives and body speed-ups. Weak on touch. Reset to the kitchen.",
     diff: "hard",
     stats: { speed: 7, power: 8, angle: 4, serve: 6, hands: 4, reach: 5 },
+    look: { skin: "#7a4a2e", shirt: "#222222", shorts: "#e45a43", visor: "#1a1a1a", paddle: "#e45a43", hair: "#1a1a1a", shoes: "#e45a43", hat: "none", hairStyle: "bald" },
   },
   {
     round: "Championship",
@@ -79,6 +125,7 @@ const TOURNAMENT = [
     blurb: "Deep serves, heavy pace, fast hands. Championship form.",
     diff: "hard",
     stats: { speed: 8, power: 8, angle: 6, serve: 8, hands: 7, reach: 6 },
+    look: { skin: "#4d2e1c", shirt: "#f4f1e8", shorts: "#16385c", visor: "#1a1a1a", paddle: "#d4e157", hair: "#1a1a1a", shoes: "#f4f1e8", hat: "cap", hairStyle: "pony" },
   },
 ];
 const TOURNEY_KEY = "pb-tourney-v1";
@@ -325,12 +372,16 @@ export class Game {
     this.paused = false;
     this.touch = false;
 
+    this.youLook = this.loadLook() || { ...DEFAULT_YOU_LOOK };
+    this.oppLook = randomLook();
     this.near = this.makePlayer("near");
     this.far = this.makePlayer("far");
     this.nearB = this.makePlayer("near");
-    this.nearB.shirt = this.nearB.paddle = "#0e7c76";
     this.farB = this.makePlayer("far");
-    this.farB.shirt = this.farB.paddle = "#b33b2e";
+    this.applyLook(this.near, this.youLook);
+    this.applyLook(this.far, this.oppLook);
+    this.applyLook(this.nearB, tintLook(this.youLook, 0.72));
+    this.applyLook(this.farB, tintLook(this.oppLook, 0.72));
     this.ball = this.makeBall();
     this.match = this.freshMatch();
     this.phase = "serve";
@@ -391,7 +442,118 @@ export class Game {
       shorts: near ? "#16385c" : "#f0e6d4",
       paddle: near ? "#1aa39a" : "#e45a43",
       visor: near ? "#f4f1e8" : "#1a1a1a",
+      hair: "#3b2a1a",
+      shoes: "#efe6d8",
+      hat: "visor",
+      hairStyle: "short",
     };
+  }
+
+  applyLook(p, look) {
+    if (!p || !look) return;
+    p.skin = look.skin || p.skin;
+    p.shirt = look.shirt || p.shirt;
+    p.shorts = look.shorts || p.shorts;
+    p.visor = look.visor || p.visor;
+    p.paddle = look.paddle || look.shirt || p.paddle;
+    p.hair = look.hair || p.hair;
+    p.shoes = look.shoes || p.shoes;
+    p.hat = look.hat || "visor";
+    p.hairStyle = look.hairStyle || "short";
+  }
+
+  loadLook() {
+    try {
+      const raw = localStorage.getItem(LOOK_KEY);
+      if (!raw) return null;
+      const look = JSON.parse(raw);
+      return look && look.shirt ? look : null;
+    } catch {
+      return null;
+    }
+  }
+
+  saveLook() {
+    try {
+      localStorage.setItem(LOOK_KEY, JSON.stringify(this.youLook));
+    } catch {
+      /* ignore */
+    }
+  }
+
+  renderLookPicker() {
+    const box = $("look-you");
+    if (!box) return;
+    box.innerHTML = "";
+    const addSwatches = (key, label, colors) => {
+      const row = document.createElement("div");
+      row.className = "look-row";
+      const lab = document.createElement("span");
+      lab.textContent = label;
+      row.appendChild(lab);
+      const wrap = document.createElement("div");
+      wrap.className = "swatches";
+      colors.forEach((c) => {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "swatch";
+        b.style.background = c;
+        if (this.youLook[key] === c) b.classList.add("on");
+        b.onclick = () => {
+          this.youLook[key] = c;
+          this.saveLook();
+          this.applyLook(this.near, this.youLook);
+          this.renderLookPicker();
+        };
+        wrap.appendChild(b);
+      });
+      row.appendChild(wrap);
+      box.appendChild(row);
+    };
+    addSwatches("skin", "Skin", SKINS);
+    addSwatches("shirt", "Shirt", SHIRTS);
+    addSwatches("shorts", "Shorts", SHORTS);
+    addSwatches("visor", "Hat color", HAT_COLORS);
+    addSwatches("hair", "Hair", HAIR_COLORS);
+    addSwatches("paddle", "Paddle", SHIRTS);
+    addSwatches("shoes", "Shoes", SHOES);
+    const chips = (key, label, opts) => {
+      const row = document.createElement("div");
+      row.className = "look-row";
+      const lab = document.createElement("span");
+      lab.textContent = label;
+      row.appendChild(lab);
+      const wrap = document.createElement("div");
+      wrap.className = "look-chips";
+      opts.forEach((id) => {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.textContent = id;
+        if (this.youLook[key] === id) b.classList.add("on");
+        b.onclick = () => {
+          this.youLook[key] = id;
+          this.saveLook();
+          this.applyLook(this.near, this.youLook);
+          this.renderLookPicker();
+        };
+        wrap.appendChild(b);
+      });
+      row.appendChild(wrap);
+      box.appendChild(row);
+    };
+    chips("hat", "Hat", HATS);
+    chips("hairStyle", "Haircut", HAIR_STYLES);
+    const rnd = document.createElement("button");
+    rnd.type = "button";
+    rnd.className = "btn ghost look-random";
+    rnd.textContent = "Random kit";
+    rnd.onclick = () => {
+      this.youLook = randomLook();
+      this.saveLook();
+      this.applyLook(this.near, this.youLook);
+      this.renderLookPicker();
+    };
+    box.appendChild(rnd);
   }
 
   makeBall() {
@@ -631,9 +793,13 @@ export class Game {
     this.tape = [];
     this.applyBuild(this.near, this.youBuild);
     this.applyBuild(this.far, this.oppBuild);
+    this.applyLook(this.near, this.youLook);
+    this.applyLook(this.far, this.oppLook);
     if (mode === "doubles") {
       this.applyBuild(this.nearB, PRESETS.kitchen);
       this.applyBuild(this.farB, this.oppBuild);
+      this.applyLook(this.nearB, tintLook(this.youLook, 0.72));
+      this.applyLook(this.farB, tintLook(this.oppLook, 0.72));
     }
     document.body.classList.remove("menu-open");
     $("menu").hidden = true;
@@ -873,7 +1039,9 @@ export class Game {
       const map = { easy: "touch", normal: "balanced", hard: "athlete" };
       this.setBuild("opp", PRESETS[map[this.diff] || "balanced"], map[this.diff] || "balanced");
     }
+    this.oppLook = randomLook();
     this.refreshRoster();
+    this.renderLookPicker();
   }
 
   closeRoster() {
@@ -892,7 +1060,10 @@ export class Game {
     delete next.name;
     const build = { name, ...next };
     if (who === "you") this.youBuild = build;
-    else this.oppBuild = build;
+    else {
+      this.oppBuild = build;
+      this.oppLook = randomLook();
+    }
     this.refreshRoster(presetId ? { [who]: presetId } : null);
   }
 
@@ -982,6 +1153,9 @@ export class Game {
     $("scout").hidden = true;
     $("hud").hidden = true;
     this.match = this.freshMatch();
+    this.applyLook(this.near, this.youLook);
+    this.oppLook = randomLook();
+    this.applyLook(this.far, this.oppLook);
     this.resetPoint();
   }
 
@@ -1129,6 +1303,7 @@ export class Game {
     const rnd = TOURNAMENT[i];
     this.diff = rnd.diff;
     this.oppBuild = { ...cloneStats(rnd.stats), name: rnd.name };
+    this.oppLook = { ...(rnd.look || randomLook()) };
     $("challenge").hidden = true;
     $("scout").hidden = true;
     this.startMatch("challenge");
@@ -2624,7 +2799,7 @@ export class Game {
       ctx.stroke();
     };
 
-    ctx.fillStyle = "#efe6d8";
+    ctx.fillStyle = p.shoes || "#efe6d8";
     ctx.beginPath();
     ctx.ellipse(fL.x, fL.y, 7.2 * s, 3.1 * s, 0, 0, TAU);
     ctx.ellipse(fR.x, fR.y, 7.2 * s, 3.1 * s, 0, 0, TAU);
@@ -2645,23 +2820,60 @@ export class Game {
     ctx.fillStyle = p.shirt;
     roundRect(ctx, -13 * s, -28 * s, 26 * s, 30 * s, 9 * s);
     ctx.fill();
+    ctx.fillStyle = "rgba(255,255,255,0.18)";
+    roundRect(ctx, -13 * s, -18 * s, 26 * s, 3.2 * s, 1.2 * s);
+    ctx.fill();
     ctx.restore();
 
     ctx.fillStyle = p.skin;
     ctx.beginPath();
     ctx.arc(shX, headY, 11.2 * s, 0, TAU);
     ctx.fill();
-    ctx.fillStyle = p.visor;
-    if (back) {
-      roundRect(ctx, shX - 12 * s, headY - 9 * s, 24 * s, 6 * s, 2 * s);
+
+    const hair = p.hair || "#3b2a1a";
+    const style = p.hairStyle || "short";
+    if (style !== "bald") {
+      ctx.fillStyle = hair;
+      ctx.beginPath();
+      ctx.arc(shX, headY - 2.2 * s, 11.4 * s, Math.PI, TAU);
       ctx.fill();
-    } else {
-      roundRect(ctx, shX - 12 * s, headY - 10 * s, 24 * s, 6 * s, 2 * s);
+      if (style === "bun") {
+        ctx.beginPath();
+        ctx.arc(shX + (back ? 0 : 1) * s, headY - 13.5 * s, 5.2 * s, 0, TAU);
+        ctx.fill();
+      } else if (style === "pony") {
+        ctx.beginPath();
+        ctx.moveTo(shX + 4 * s, headY - 6 * s);
+        ctx.quadraticCurveTo(shX + 16 * s, headY + 2 * s, shX + 10 * s, headY + 14 * s);
+        ctx.quadraticCurveTo(shX + 8 * s, headY + 2 * s, shX + 2 * s, headY - 4 * s);
+        ctx.fill();
+      } else if (style === "fade") {
+        ctx.fillRect(shX - 11 * s, headY - 2 * s, 5 * s, 8 * s);
+        ctx.fillRect(shX + 6 * s, headY - 2 * s, 5 * s, 8 * s);
+      }
+    }
+
+    const hat = p.hat || "visor";
+    ctx.fillStyle = p.visor || "#f4f1e8";
+    if (hat === "cap" || hat === "visor") {
+      if (hat === "cap") {
+        ctx.beginPath();
+        ctx.ellipse(shX, headY - 6.5 * s, 11.6 * s, 6.2 * s, 0, Math.PI, TAU);
+        ctx.fill();
+      }
+      if (back) roundRect(ctx, shX - 12 * s, headY - 9 * s, 24 * s, 5.5 * s, 2 * s);
+      else roundRect(ctx, shX - 13 * s, headY - 5 * s, 26 * s, 4.2 * s, 2 * s);
       ctx.fill();
+    } else if (hat === "band") {
+      roundRect(ctx, shX - 12 * s, headY - 5 * s, 24 * s, 4.2 * s, 2 * s);
+      ctx.fill();
+    }
+
+    if (!back) {
       ctx.fillStyle = "#1a1a1a";
       ctx.beginPath();
-      ctx.arc(shX - 4 * s, headY, 1.5 * s, 0, TAU);
-      ctx.arc(shX + 4 * s, headY, 1.5 * s, 0, TAU);
+      ctx.arc(shX - 4 * s, headY + 1 * s, 1.5 * s, 0, TAU);
+      ctx.arc(shX + 4 * s, headY + 1 * s, 1.5 * s, 0, TAU);
       ctx.fill();
     }
 
