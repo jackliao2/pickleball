@@ -773,12 +773,21 @@ export class Game {
     const incoming = this.incoming(p);
     const land = this.predictLanding(this.ball);
     if (incoming) {
-      const ty = land.y + (p.side === "near" ? -1.1 : 1.1);
-      this.moveTo(p, land.x + rand(-d.err, d.err) * 0.3, ty, dt);
-      const reach = 3.2;
-      const close = dist(p.x, p.y, this.ball.x, this.ball.y) < reach + 0.4;
-      const zone = this.ball.z < 6.4 && this.ball.z > 0.15;
-      if (close && zone && !p.swinging) {
+      const ty = land.y + (p.side === "near" ? -1.15 : 1.15);
+      this.moveTo(p, land.x + rand(-d.err, d.err) * 0.25, ty, dt);
+      const reach = 3.55;
+      const close = dist(p.x, p.y, this.ball.x, this.ball.y) < reach + 0.55;
+      const zone = this.ball.z < 6.4 && this.ball.z > 0.12;
+      const mustLetBounce =
+        (p.side !== this.match.server && !this.match.serveBounced) ||
+        (p.side === this.match.server && !this.match.returnBounced);
+      const bouncedHere = this.ball.lastBounceSide === p.side;
+      const volley = this.ball.z > 0.28 && !bouncedHere;
+      if (mustLetBounce && !bouncedHere) {
+        /* wait for the two-bounce rule */
+      } else if (volley && playerInKitchen(p)) {
+        /* never volley in the kitchen */
+      } else if (close && zone && !p.swinging) {
         p.charge = this.chooseAIShot(p);
         this.doSwing(p, p.charge);
         p.charge = 0;
@@ -1159,8 +1168,8 @@ export class Game {
     ctx.fillStyle = "rgba(244,241,232,0.55)";
     ctx.font = "600 11px Outfit, sans-serif";
     ctx.textAlign = "center";
-    const k1 = P(10, 18.5);
-    const k2 = P(10, 25.5);
+    const k1 = P(10, 17.2);
+    const k2 = P(10, 26.8);
     ctx.fillText("KITCHEN", k1.sx, k1.sy);
     ctx.fillText("KITCHEN", k2.sx, k2.sy);
   }
@@ -1309,7 +1318,7 @@ export class Game {
 
   drawPlayer(ctx, p) {
     const pr = this.project(p.x, p.y, 0);
-    const s = pr.s;
+    const s = pr.s * 1.32;
     const back = p.side === "near";
     const swing = p.swinging ? Math.sin(p.swing * Math.PI) : 0;
     const step = Math.sin(p.walk) * 5 * s;

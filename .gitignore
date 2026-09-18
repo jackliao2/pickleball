@@ -3,3 +3,9 @@ node_modules
 *.csv
 .DS_Store
 Thumbs.db
+package.json
+package-lock.json
+_verify.mjs
+_shots/
+
+.vercel
