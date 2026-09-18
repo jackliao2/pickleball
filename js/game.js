@@ -481,16 +481,25 @@ export class Game {
     }
   }
 
-  rerollLook() {
-    this.youLook = randomLook();
-    this.saveLook();
-    this.applyLook(this.near, this.youLook);
+  rerollLook(who = "you") {
+    if (who === "opp") {
+      this.oppLook = randomLook();
+      this.applyLook(this.far, this.oppLook);
+    } else {
+      this.youLook = randomLook();
+      this.saveLook();
+      this.applyLook(this.near, this.youLook);
+    }
     this.drawLookPreview();
   }
 
   drawLookPreview() {
-    const c = $("look-preview");
-    if (!c) return;
+    this.paintLookPreview($("look-preview"), this.youLook);
+    this.paintLookPreview($("look-preview-opp"), this.oppLook);
+  }
+
+  paintLookPreview(c, look) {
+    if (!c || !look) return;
     const ctx = c.getContext("2d");
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     const w = 200;
@@ -518,7 +527,7 @@ export class Game {
       hand: 1,
       shotKind: "dink",
     };
-    this.applyLook(dummy, this.youLook);
+    this.applyLook(dummy, look);
     const prev = this.project.bind(this);
     this.project = () => ({ sx: w / 2, sy: h * 0.9, s: 1.55 });
     this.drawPlayer(ctx, dummy);
@@ -618,7 +627,8 @@ export class Game {
     $("btn-scout-back").onclick = () => this.closeScout();
     $("btn-p2").onclick = () => this.openRoster("p2");
     $("btn-start-match").onclick = () => this.confirmRoster();
-    $("btn-random-look").onclick = () => this.rerollLook();
+    $("btn-random-look").onclick = () => this.rerollLook("you");
+    $("btn-random-look-opp").onclick = () => this.rerollLook("opp");
     $("btn-roster-back").onclick = () => this.closeRoster();
     $("btn-howto").onclick = () => this.showHowTo(true);
     $("btn-howto-close").onclick = () => this.showHowTo(false);
@@ -1043,6 +1053,7 @@ export class Game {
       this.oppLook = randomLook();
     }
     this.refreshRoster(presetId ? { [who]: presetId } : null);
+    this.drawLookPreview();
   }
 
   buildRosterUI() {

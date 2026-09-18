@@ -91,34 +91,39 @@
 
     <div id="roster" class="overlay" hidden>
       <div class="card roster-card">
-        <p class="kicker">Build the match</p>
-        <h2>You vs them</h2>
-        <p class="lede">Tap Random kit until you like how you look. Then 36 points across six stats. Reach is real: if the paddle is not there, it is a whiff.</p>
-        <div class="roster-grid">
-          <div class="build" data-who="you">
-            <div class="build-head">
-              <h3>You</h3>
-              <span class="budget" id="budget-you">36 / 36</span>
-            </div>
-            <div class="presets" id="presets-you"></div>
-            <div class="look-box" id="look-you">
-              <canvas id="look-preview" width="200" height="260"></canvas>
-              <button type="button" class="btn" id="btn-random-look">Random kit</button>
-              <p class="hint">Keep tapping to reroll.</p>
-            </div>
-            <div class="stat-list" id="stats-you"></div>
+        <div class="roster-top">
+          <div>
+            <p class="kicker">Build the match</p>
+            <h2>You vs them</h2>
           </div>
-          <div class="build" data-who="opp">
-            <div class="build-head">
-              <h3 id="opp-label">Opponent</h3>
-              <span class="budget" id="budget-opp">36 / 36</span>
-            </div>
-            <div class="presets" id="presets-opp"></div>
-            <div class="stat-list" id="stats-opp"></div>
-          </div>
+          <p class="lede">36 points each. Random kit until you like the look.</p>
         </div>
-        <button type="button" class="btn primary" id="btn-start-match">Start match</button>
-        <button type="button" class="btn ghost" id="btn-roster-back">Back</button>
+        <div class="roster-grid">
+          <div class="kit">
+            <canvas id="look-preview" width="200" height="260"></canvas>
+            <button type="button" class="btn" id="btn-random-look">Random kit</button>
+          </div>
+          <div class="kit">
+            <canvas id="look-preview-opp" width="200" height="260"></canvas>
+            <button type="button" class="btn" id="btn-random-look-opp">Random kit</button>
+          </div>
+          <div class="build-head">
+            <h3>You</h3>
+            <span class="budget" id="budget-you">36 / 36</span>
+          </div>
+          <div class="build-head">
+            <h3 id="opp-label">Opponent</h3>
+            <span class="budget" id="budget-opp">36 / 36</span>
+          </div>
+          <div class="presets" id="presets-you"></div>
+          <div class="presets" id="presets-opp"></div>
+          <div class="stat-list" id="stats-you"></div>
+          <div class="stat-list" id="stats-opp"></div>
+        </div>
+        <div class="roster-actions">
+          <button type="button" class="btn primary" id="btn-start-match">Start match</button>
+          <button type="button" class="btn ghost" id="btn-roster-back">Back</button>
+        </div>
       </div>
     </div>
 

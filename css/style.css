@@ -220,32 +220,62 @@ canvas {
 }
 .card.wide { width: min(640px, 100%); max-height: min(86dvh, 820px); overflow: auto; }
 .roster-card {
-  width: min(860px, 100%);
-  max-height: min(90dvh, 920px);
+  width: min(820px, 100%);
+  max-height: min(92dvh, 900px);
   overflow: auto;
+  padding: 20px 22px 16px;
 }
+.roster-top {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+.roster-top h2 { margin: 0; }
+.roster-top .lede { margin: 0; max-width: 280px; text-align: right; }
 .roster-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 16px;
-  margin: 8px 0 14px;
+  column-gap: 28px;
+  row-gap: 8px;
+  align-items: start;
+  margin: 0 0 12px;
 }
-.build {
+.kit {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 8px 10px;
   background: rgba(255,255,255,0.04);
   border: 1px solid var(--line);
   border-radius: 14px;
-  padding: 12px 12px 10px;
 }
+.kit canvas {
+  width: 120px;
+  height: 156px;
+  border-radius: 12px;
+  background: rgba(0,0,0,0.18);
+  display: block;
+}
+.kit .btn { width: 100%; padding: 8px 10px; }
 .build-head {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  margin-bottom: 8px;
+  min-height: 22px;
 }
-.build-head h3 { margin: 0; font-size: 13px; }
+.build-head h3 { margin: 0; font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; }
 .budget { font-size: 12px; font-weight: 700; color: var(--yellow); }
 .budget.over { color: var(--coral); }
-.presets { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 10px; }
+.presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  min-height: 56px;
+  align-content: start;
+}
 .presets button {
   font: 650 11px Outfit, sans-serif;
   letter-spacing: 0.04em;
@@ -257,28 +287,19 @@ canvas {
   cursor: pointer;
 }
 .presets button.on { background: var(--yellow); color: var(--ink); border-color: var(--yellow); }
-.look-box {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+.stat-list { display: flex; flex-direction: column; gap: 4px; }
+.stat-row {
+  display: grid;
+  grid-template-columns: 58px 1fr 22px;
   gap: 8px;
-  margin: 0 0 10px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid var(--line);
+  align-items: center;
+  min-height: 26px;
 }
-#look-preview {
-  width: 160px;
-  height: 208px;
-  border-radius: 14px;
-  background: rgba(0,0,0,0.18);
-  display: block;
-}
-.look-box .hint { margin: 0; text-align: center; }
-.look-box .btn { width: 100%; }
-.stat-row { display: grid; grid-template-columns: 72px 1fr 22px; gap: 8px; align-items: center; margin: 5px 0; }
 .stat-row label { font-size: 12px; font-weight: 600; }
 .stat-row input[type="range"] { width: 100%; accent-color: var(--yellow); }
 .stat-row .n { font-family: "Barlow Condensed", sans-serif; font-size: 18px; font-weight: 800; text-align: right; }
+.roster-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.roster-actions .btn { margin: 0; }
 
 .tourney-map {
   display: flex;
@@ -378,8 +399,12 @@ canvas {
   border-radius: 99px;
 }
 
+.roster-top .kicker { margin-bottom: 4px; }
 @media (max-width: 700px) {
   .roster-grid { grid-template-columns: 1fr; }
+  .roster-top { flex-direction: column; align-items: flex-start; }
+  .roster-top .lede { text-align: left; max-width: none; }
+  .roster-actions { grid-template-columns: 1fr; }
 }
 
 .kicker {
