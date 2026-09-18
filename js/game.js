@@ -8,7 +8,7 @@ const NET_HS = 3;
 const TAU = Math.PI * 2;
 
 const DIFF = {
-  easy: { speed: 7.1, err: 2.2, react: 0.35 },
+  easy: { speed: 7.6, err: 1.35, react: 0.16 },
   normal: { speed: 8.4, err: 1.1, react: 0.2 },
   hard: { speed: 9.8, err: 0.45, react: 0.12 },
 };
@@ -1063,6 +1063,8 @@ export class Game {
   }
 
   buzz(ms) {
+    if (this.time - (this.lastBuzz || 0) < 0.28) return;
+    this.lastBuzz = this.time;
     try {
       navigator.vibrate?.(ms);
     } catch {
@@ -1092,6 +1094,7 @@ export class Game {
       p.kitchenWatch = 0;
       p.chargeDir = 1;
       p.aiWind = 0;
+      p.aiChaseX = null;
     }
 
     const even = this.evenScore();
@@ -1611,7 +1614,9 @@ export class Game {
       } else {
         ty = land.y + (p.side === "near" ? -0.8 : 0.8);
       }
-      this.moveTo(p, land.x + rand(-d.err, d.err) * 0.2, ty, dt);
+      if (p.aiChaseX == null) p.aiChaseX = land.x;
+      p.aiChaseX = lerp(p.aiChaseX, land.x, 0.14);
+      this.moveTo(p, p.aiChaseX, ty, dt);
       const close = this.canContact(p, this.ball);
       const mustLetBounce = this.needsBounce(p);
       const volley = this.ball.z > 0.28 && !bouncedHere;
@@ -1624,7 +1629,7 @@ export class Game {
           this.moveTo(p, p.x, outY, dt);
         } else {
           p.aiWind = (p.aiWind || 0) + dt;
-          const wait = Math.max(0.02, d.react * lerp(1.1, 0.38, (p.hands || 6) / 10));
+          const wait = Math.max(0.02, d.react * lerp(1.05, 0.45, (p.hands || 6) / 10));
           if (p.aiWind >= wait) {
             p.charge = this.chooseAIShot(p);
             this.doSwing(p, p.charge);
@@ -1633,9 +1638,10 @@ export class Game {
           }
         }
       } else {
-        p.aiWind = 0;
+        p.aiWind = Math.max(0, (p.aiWind || 0) - dt * 2);
       }
     } else {
+      p.aiChaseX = null;
       const homeY = this.twoBounceDone() ? outY : p.side === "near" ? 5.5 : 38.5;
       const homeX = this.isDoubles() ? (p.x < 10 ? 5 : 15) : clamp(lerp(p.x, this.ball.x, 0.18), 3, 17);
       this.moveTo(p, homeX, homeY, dt);
