@@ -622,6 +622,18 @@ export class Game {
     );
   }
 
+  atKitchenLine(p) {
+    return Math.abs(p.y - (p.side === "near" ? 15 : 29)) < 3.2;
+  }
+
+  ballAttackable(p) {
+    const b = this.ball;
+    if (!b || !b.live) return false;
+    if (this.needsBounce(p)) return false;
+    const tape = netHeightAt(clamp(b.x, 0, CW));
+    return b.z >= tape + 0.35;
+  }
+
   canContact(p, b) {
     if (!b || !b.live) return false;
     if (this.needsBounce(p) && b.lastBounceSide !== p.side) return false;
@@ -706,7 +718,8 @@ export class Game {
     const wantLob = this.isHuman(p)
       ? ay > 0.35 && power > 0.35 && !atKitchen
       : (p.side === "near" ? this.keys.has("KeyW") : this.keys.has("ArrowUp")) && power > 0.35;
-    if (atKitchen && power >= 0.36) return b && b.z > 4.6 ? "smash" : "speedup";
+    if (atKitchen && power >= 0.36 && this.ballAttackable(p)) return b && b.z > 4.8 ? "smash" : "speedup";
+    if (atKitchen && power >= 0.5) return "speedup";
     if (wantLob) return "lob";
     if (b && b.z > 5.2 && Math.abs(p.y - NET_Y) < 10 && power >= 0.45) return "smash";
     if (thirdShot || (atBase && power < 0.5)) return "drop";
@@ -1414,7 +1427,8 @@ export class Game {
         !playerInKitchen(p) &&
         this.canContact(p, this.ball)
       ) {
-        this.releaseSwing(p);
+        const kit = this.atKitchenLine(p);
+        if (!kit || (p.charge >= 0.36 && this.ballAttackable(p))) this.releaseSwing(p);
       }
       if (p.swinging) {
         p.swing += dt * (p.swingRate || 2.2);
@@ -1602,8 +1616,10 @@ export class Game {
     if (this.ball.z > 5.2 && atK) return 0.85;
     if (third) return 0.16;
     if (atK) {
-      const attack = 0.04 + pow * 0.04 + (hard ? 0.1 : 0) + hands * 0.012;
-      if (this.ball.z > 2.8 && Math.random() < attack) return 0.72;
+      if (this.ballAttackable(p)) {
+        const attack = 0.22 + pow * 0.05 + (hard ? 0.15 : 0) + hands * 0.015;
+        if (Math.random() < attack) return 0.7;
+      }
       return 0.13;
     }
     if (Math.random() < 0.7) return 0.2;
@@ -1748,7 +1764,7 @@ export class Game {
       if (!this.match.returnBounced && side === this.match.server) {
         this.match.returnBounced = true;
         this.syncHud();
-        this.toast("Kitchen: hold SPACE — tap dink, hold to yellow then it punches a speed-up");
+        this.toast("Kitchen: high ball = hold yellow to 抽. Low ball = let it bounce, then tap dink");
       }
     }
     this.tryPendingHit();
