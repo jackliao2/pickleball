@@ -31,8 +31,15 @@ const PRESETS = {
   athlete: { name: "Athlete", speed: 9, power: 6, angle: 5, serve: 5, hands: 6, reach: 5 },
   cannon: { name: "Cannon", speed: 4, power: 9, angle: 4, serve: 10, hands: 4, reach: 5 },
 };
-const CHALLENGE_ORDER = ["touch", "balanced", "athlete", "kitchen", "banger", "cannon"];
-const CHALLENGE_KEY = "pb-gauntlet-v1";
+const TOURNAMENT = [
+  { round: "Qualifier", name: "Pat Nguyen", style: "Club rec", preset: "touch", diff: "easy", budget: 28 },
+  { round: "Round of 8", name: "Sam Ortiz", style: "All-court", preset: "balanced", diff: "easy", budget: 32 },
+  { round: "Quarterfinal", name: "Jordan Blake", style: "Athlete", preset: "athlete", diff: "normal", budget: 36 },
+  { round: "Semifinal", name: "Alex Kim", style: "Kitchen", preset: "kitchen", diff: "normal", budget: 36 },
+  { round: "Final", name: "Morgan Hale", style: "Banger", preset: "banger", diff: "hard", budget: 40 },
+  { round: "Championship", name: "Casey Voss", style: "Pro", preset: "cannon", diff: "hard", budget: 44 },
+];
+const TOURNEY_KEY = "pb-tourney-v1";
 
 function emptyStats() {
   return { speed: 6, power: 6, angle: 6, serve: 6, hands: 6, reach: 6 };
@@ -55,6 +62,30 @@ function rollStats() {
 }
 function cloneStats(st) {
   return { ...st };
+}
+
+function scaleBuild(base, budget) {
+  const st = cloneStats(base);
+  delete st.name;
+  let sum = statSum(st);
+  const ranked = STAT_IDS.slice().sort((a, b) => (base[b] || 0) - (base[a] || 0));
+  if (sum > budget) {
+    for (let i = ranked.length - 1; i >= 0 && sum > budget; i--) {
+      const id = ranked[i];
+      while (sum > budget && st[id] > 2) {
+        st[id] -= 1;
+        sum -= 1;
+      }
+    }
+  } else {
+    for (const id of ranked) {
+      while (sum < budget && st[id] < 10) {
+        st[id] += 1;
+        sum += 1;
+      }
+    }
+  }
+  return st;
 }
 
 const $ = (id) => document.getElementById(id);
@@ -237,6 +268,7 @@ export class Game {
     this.pointer = { x: 0, y: 0, down: false, on: false };
     this.stick = { dx: 0, dy: 0, active: false };
     this.diff = "normal";
+    this.menuDiff = "normal";
     this.mode = "cpu";
     this.screen = "menu";
     this.demo = true;
@@ -421,7 +453,7 @@ export class Game {
       b.onclick = () => {
         document.querySelectorAll(".diff button").forEach((x) => x.classList.remove("on"));
         b.classList.add("on");
-        this.diff = b.dataset.diff;
+        this.diff = this.menuDiff = b.dataset.diff;
       };
     });
 
@@ -894,6 +926,7 @@ export class Game {
     this.paused = false;
     this.replay = null;
     this.challengeIndex = -1;
+    this.diff = this.menuDiff || "normal";
     document.body.classList.add("menu-open");
     $("menu").hidden = false;
     $("roster").hidden = true;
@@ -957,8 +990,8 @@ export class Game {
 
   gauntletCleared() {
     try {
-      const n = parseInt(localStorage.getItem(CHALLENGE_KEY) || "0", 10);
-      return Number.isFinite(n) ? clamp(n, 0, CHALLENGE_ORDER.length) : 0;
+      const n = parseInt(localStorage.getItem(TOURNEY_KEY) || "0", 10);
+      return Number.isFinite(n) ? clamp(n, 0, TOURNAMENT.length) : 0;
     } catch {
       return 0;
     }
@@ -966,7 +999,7 @@ export class Game {
 
   saveGauntlet(n) {
     try {
-      localStorage.setItem(CHALLENGE_KEY, String(clamp(n, 0, CHALLENGE_ORDER.length)));
+      localStorage.setItem(TOURNEY_KEY, String(clamp(n, 0, TOURNAMENT.length)));
     } catch {
       /* ignore */
     }
@@ -989,37 +1022,39 @@ export class Game {
     const unlocked = this.gauntletCleared();
     const list = $("challenge-list");
     list.innerHTML = "";
-    CHALLENGE_ORDER.forEach((id, i) => {
-      const pre = PRESETS[id];
+    TOURNAMENT.forEach((rnd, i) => {
       const btn = document.createElement("button");
       btn.type = "button";
       const done = i < unlocked;
       const lock = i > unlocked;
       btn.classList.toggle("done", done);
       btn.classList.toggle("locked", lock);
-      const tag = done ? "Cleared" : lock ? "Locked" : "Fight";
-      btn.innerHTML = `<span>${i + 1}. ${pre.name}</span><span class="tag">${tag}</span>`;
+      const tag = done ? "Won" : lock ? "Locked" : "Play";
+      btn.innerHTML = `<span class="round-meta"><strong>${rnd.round}</strong><em>${rnd.name} · ${rnd.style}</em></span><span class="tag">${tag}</span>`;
       if (!lock) btn.onclick = () => this.startChallenge(i);
       list.appendChild(btn);
     });
     const n = unlocked;
     $("challenge-lede").textContent =
-      n >= CHALLENGE_ORDER.length
-        ? "Gauntlet complete. Replay any opponent."
-        : `Beat each build in order. ${n} / ${CHALLENGE_ORDER.length} cleared. Progress saves on this device.`;
+      n >= TOURNAMENT.length
+        ? "Champion. Replay any round."
+        : `${n} / ${TOURNAMENT.length} rounds won. Opponents get stronger. Progress saves on this device.`;
   }
 
   startChallenge(i) {
     this.challengeIndex = i;
-    const pre = PRESETS[CHALLENGE_ORDER[i]];
-    this.oppBuild = { ...cloneStats(pre), name: pre.name };
+    const rnd = TOURNAMENT[i];
+    const pre = PRESETS[rnd.preset];
+    this.diff = rnd.diff;
+    this.oppBuild = { ...scaleBuild(pre, rnd.budget), name: rnd.name };
     $("challenge").hidden = true;
     this.startMatch("challenge");
+    this.flash(rnd.round, 1.15);
   }
 
   playNextChallenge() {
     const next = this.challengeIndex + 1;
-    if (next >= CHALLENGE_ORDER.length) {
+    if (next >= TOURNAMENT.length) {
       this.toMenu();
       this.openChallenge();
       return;
@@ -1885,18 +1920,21 @@ export class Game {
       $("btn-next-challenge").hidden = true;
       if (this.mode === "challenge") {
         const i = this.challengeIndex;
-        const last = CHALLENGE_ORDER.length - 1;
+        const rnd = TOURNAMENT[i];
+        const last = TOURNAMENT.length - 1;
         if (a > b) {
           this.saveGauntlet(Math.max(this.gauntletCleared(), i + 1));
           if (i >= last) {
-            $("over-title").textContent = "Gauntlet done";
-            $("over-kicker").textContent = "All six builds cleared";
+            $("over-title").textContent = "Champion";
+            $("over-kicker").textContent = "Tournament complete";
           } else {
-            $("over-kicker").textContent = `Cleared ${PRESETS[CHALLENGE_ORDER[i]].name} · ${i + 1} / ${CHALLENGE_ORDER.length}`;
+            $("over-kicker").textContent = `${rnd.round} won · ${i + 1} / ${TOURNAMENT.length}`;
+            $("over-title").textContent = `Beat ${rnd.name}`;
             $("btn-next-challenge").hidden = false;
+            $("btn-next-challenge").textContent = `Next · ${TOURNAMENT[i + 1].round}`;
           }
         } else {
-          $("over-kicker").textContent = "Challenge failed · rematch or menu";
+          $("over-kicker").textContent = `${rnd.round} lost · rematch or menu`;
         }
       }
       this.sfx.whistle();

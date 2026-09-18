@@ -248,6 +248,9 @@ canvas {
 .challenge-list button.locked { opacity: 0.4; cursor: not-allowed; }
 .challenge-list button.done { border-color: rgba(212,225,87,0.5); }
 .challenge-list .tag { font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--yellow); }
+.challenge-list .round-meta { display: flex; flex-direction: column; gap: 2px; }
+.challenge-list .round-meta strong { font-size: 15px; }
+.challenge-list .round-meta em { font-style: normal; font-size: 12px; font-weight: 500; opacity: 0.7; }
 
 @media (max-width: 700px) {
   .roster-grid { grid-template-columns: 1fr; }
