@@ -351,6 +351,10 @@ export class Game {
       this.sfx.ensure();
       if (e.code === "Escape") this.togglePause();
       if (e.code === "KeyM") this.toggleMute();
+      if ((e.code === "Space" || e.code === "Enter") && this.screen === "play" && this.phase === "replay") {
+        this.skipReplay();
+        return;
+      }
       if (e.code === "Space" && this.screen === "play") this.beginCharge(this.near);
       if (e.code === "Enter" && this.screen === "play" && this.mode === "p2") this.beginCharge(this.far);
     });
@@ -368,8 +372,12 @@ export class Game {
     c.addEventListener("pointerdown", (e) => {
       if (this.touch) return;
       if (this.screen !== "play") return;
-      this.pointer.down = true;
       this.sfx.ensure();
+      if (this.phase === "replay") {
+        this.skipReplay();
+        return;
+      }
+      this.pointer.down = true;
       this.beginCharge(this.near);
     });
     window.addEventListener("pointerup", () => {
@@ -457,6 +465,10 @@ export class Game {
       e.preventDefault();
       this.touch = true;
       $("touch").hidden = false;
+      if (this.phase === "replay") {
+        this.skipReplay();
+        return;
+      }
       this.beginCharge(this.near);
     });
     swing.addEventListener("pointerup", () => this.releaseSwing(this.near));
@@ -1854,23 +1866,28 @@ export class Game {
     this.replay = { frames: this.tape.slice(), i: 0, label };
     this.flash(label, 1.35);
     this.sfx.crowd(1.15);
+    this.toast("SPACE / click to skip");
+  }
+
+  skipReplay() {
+    if (this.phase !== "replay") return;
+    this.replay = null;
+    this.phase = "dead";
+    this.deadT = 0.2;
+    if (this.paused) this.togglePause(false);
+    this.checkWin();
   }
 
   stepReplay(dt) {
     const r = this.replay;
     if (!r) {
-      this.phase = "dead";
-      this.deadT = 0.4;
-      this.checkWin();
+      this.skipReplay();
       return;
     }
     r.i += dt * 22;
     const frames = r.frames;
     if (r.i >= frames.length - 1) {
-      this.replay = null;
-      this.phase = "dead";
-      this.deadT = 0.6;
-      this.checkWin();
+      this.skipReplay();
       return;
     }
     this.applyFrame(frames[Math.min(frames.length - 1, r.i | 0)]);
@@ -2038,7 +2055,7 @@ export class Game {
     ctx.save();
     const label = this.replay?.label ? `REPLAY · ${this.replay.label}` : "REPLAY";
     const y = Math.max(108, this.h * 0.15);
-    roundRect(ctx, this.w / 2 - 108, y, 216, 36, 10);
+    roundRect(ctx, this.w / 2 - 118, y, 236, 52, 10);
     ctx.fillStyle = "rgba(7,24,44,0.72)";
     ctx.fill();
     ctx.fillStyle = "#d4e157";
@@ -2046,6 +2063,9 @@ export class Game {
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillText(label, this.w / 2, y + 18);
+    ctx.fillStyle = "rgba(244,241,232,0.75)";
+    ctx.font = "600 11px Outfit, sans-serif";
+    ctx.fillText("SPACE / click to skip", this.w / 2, y + 38);
     ctx.restore();
   }
 
