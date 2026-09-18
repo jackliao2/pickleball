@@ -1783,7 +1783,12 @@ export class Game {
     if (this.lastKind === "speedup" || this.lastKind === "smash") this.meta.speedups += 1;
     if (reason === "kitchen") this.meta.kitchen += 1;
 
+    if (faulter !== "near" && faulter !== "far") faulter = this.ball.lastHit === "far" ? "far" : "near";
+    const winner = faulter === "near" ? "far" : "near";
     const server = this.match.server;
+    const serverWon = winner === server;
+    this.match[winner] += 1;
+
     let highlight = null;
     const faultCall =
       reason === "double" || reason === "not-up"
@@ -1799,40 +1804,34 @@ export class Game {
                 : reason === "foot-fault"
                   ? "FOOT FAULT"
                   : reason === "serve-fault"
-                    ? null
+                    ? "FAULT"
                     : null;
-    if (faulter === server) {
-      const youWonRally = this.ball.lastHit === "near" && faulter === "far";
-      if (youWonRally && (reason === "double" || reason === "not-up" || reason === "out" || reason === "net")) {
-        this.flash("SIDE OUT", 1.1);
-      } else if (faultCall) this.flash(faultCall, 1.1);
-      this.sfx.fault();
+
+    if (!serverWon) {
       if (this.isDoubles() && this.match.startOneServe) {
         this.match.startOneServe = false;
         this.match.server = server === "near" ? "far" : "near";
         this.match.serverNum = 1;
-        this.toast("Side out");
       } else if (this.isDoubles() && this.match.serverNum === 1) {
         this.match.serverNum = 2;
-        this.toast("Second server");
       } else {
         this.match.server = server === "near" ? "far" : "near";
         this.match.serverNum = 1;
-        this.toast("Side out");
       }
-    } else {
-      this.match[server] += 1;
+    }
+
+    const youWon = winner === "near";
+    const opps = this.allPlayers().filter((o) => o.side === faulter);
+    const farFromBall = opps.every((o) => dist(o.x, o.y, this.ball.x, this.ball.y) > 3.2);
+    if (youWon) {
       this.sfx.cheer();
-      const youScored = server === "near";
-      const opps = this.allPlayers().filter((o) => o.side === faulter);
-      const farFromBall = opps.every((o) => dist(o.x, o.y, this.ball.x, this.ball.y) > 3.2);
-      if (this.rallyLen <= 1 && this.match.serveBounced && (reason === "double" || reason === "not-up")) {
+      if (this.rallyLen <= 1 && this.match.serveBounced && serverWon && (reason === "double" || reason === "not-up")) {
         this.meta.aces += 1;
         this.flash("ACE", 1.15);
         highlight = "ACE";
         this.sfx.crowd(1.4);
         this.buzz([30, 50, 70]);
-      } else if ((this.lastKind === "speedup" || this.lastKind === "smash") && farFromBall) {
+      } else if ((this.lastKind === "speedup" || this.lastKind === "smash") && farFromBall && this.ball.lastHit === "near") {
         this.meta.winners += 1;
         this.flash("WINNER", 1.1);
         highlight = "WINNER";
@@ -1844,16 +1843,19 @@ export class Game {
         highlight = "HANDS";
         this.sfx.crowd(1.1);
         this.buzz([12, 20, 12, 20, 28]);
-      } else if (youScored) {
+      } else {
         this.flash("POINT", 1.05);
         this.sfx.crowd(0.7);
         this.buzz(18);
-      } else {
-        if (faultCall) this.flash(faultCall, 1.1);
-        else this.toast("Point");
-        this.sfx.crowd(0.7);
-        this.buzz(18);
       }
+      if (!serverWon) {
+        if (this.isDoubles() && this.match.server === "far" && this.match.serverNum === 2) this.toast("Point · second server");
+        else if (this.match.server === "near") this.toast("Point · your serve");
+      }
+    } else {
+      this.sfx.fault();
+      if (faultCall) this.flash(faultCall, 1.1);
+      else this.flash("POINT", 1.05);
     }
     if (!this.match.switched && (this.match.near === 6 || this.match.far === 6)) {
       this.match.switched = true;
