@@ -270,6 +270,7 @@ export class Game {
     this.oppBuild = { name: "All-court", ...emptyStats() };
     this.pendingMode = "cpu";
     this.tape = [];
+    this.pendingHit = null;
     this.replay = null;
     this.challengeIndex = -1;
 
@@ -594,11 +595,12 @@ export class Game {
     const dx = x - p.x;
     const dy = y - p.y;
     const forward = p.side === "near" ? dy : -dy;
+    const bouncedHere = this.ball && this.ball.lastBounceSide === p.side;
     const kit = Math.abs(p.y - (p.side === "near" ? 15 : 29)) < 3.4;
     const h = (p.hands || 6) / 10;
-    let fwdMax = reach + 0.45 + (kit ? 0.12 + h * 0.38 : 0);
-    let sideMax = reach * 1.05 + (kit ? 0.08 + h * 0.28 : 0);
-    const backMax = 1.1 + (kit ? h * 0.15 : 0);
+    let fwdMax = reach + 0.55 + (kit ? 0.12 + h * 0.38 : 0) + (bouncedHere ? 0.4 : 0);
+    let sideMax = reach * 1.08 + (kit ? 0.08 + h * 0.28 : 0) + (bouncedHere ? 0.28 : 0);
+    const backMax = (bouncedHere ? 2.1 : 1.2) + (kit ? h * 0.15 : 0);
     if (z > 4.9) {
       fwdMax *= 0.78;
       sideMax *= 0.78;
@@ -606,8 +608,8 @@ export class Game {
     if (forward < -backMax || forward > fwdMax) return false;
     if (Math.abs(dx) > sideMax) return false;
     const fy = forward >= 0 ? fwdMax : backMax;
-    if ((dx / sideMax) ** 2 + (forward / fy) ** 2 > 1.15) return false;
-    if (z < 0.1 || z > 6.3) return false;
+    if ((dx / sideMax) ** 2 + (forward / fy) ** 2 > 1.18) return false;
+    if (z < (bouncedHere ? 0.04 : 0.12) || z > 6.3) return false;
     return true;
   }
 
@@ -623,7 +625,8 @@ export class Game {
     if (this.needsBounce(p) && b.lastBounceSide !== p.side) return false;
     if (this.inReach(p, b.x, b.y, b.z)) return true;
     const kit = Math.abs(p.y - (p.side === "near" ? 15 : 29)) < 3.4;
-    const look = 0.05 + (p.hands || 6) * 0.015 + (kit ? 0.035 : 0);
+    const hopped = b.lastBounceSide === p.side;
+    const look = 0.05 + (p.hands || 6) * 0.015 + (kit ? 0.035 : 0) + (hopped ? 0.1 : 0);
     let x = b.x;
     let y = b.y;
     let z = b.z;
@@ -694,11 +697,11 @@ export class Game {
     const wantLob = this.isHuman(p)
       ? ay > 0.35 && power > 0.35 && !atKitchen
       : (p.side === "near" ? this.keys.has("KeyW") : this.keys.has("ArrowUp")) && power > 0.35;
-    if (atKitchen && power >= 0.28) return b && b.z > 4.6 ? "smash" : "speedup";
+    if (atKitchen && power >= 0.45) return b && b.z > 4.6 ? "smash" : "speedup";
     if (wantLob) return "lob";
-    if (b && b.z > 5.2 && Math.abs(p.y - NET_Y) < 10 && power >= 0.35) return "smash";
-    if (thirdShot || (atBase && power < 0.45)) return "drop";
-    if (power < 0.3 || atKitchen) return "dink";
+    if (b && b.z > 5.2 && Math.abs(p.y - NET_Y) < 10 && power >= 0.45) return "smash";
+    if (thirdShot || (atBase && power < 0.5)) return "drop";
+    if (power < 0.42 || atKitchen) return "dink";
     return "drive";
   }
 
@@ -1022,6 +1025,7 @@ export class Game {
     this.ball.held = true;
     this.ball.lastHit = m.server;
     this.tape = [];
+    this.pendingHit = null;
     for (const p of [this.near, this.far, this.nearB, this.farB]) {
       p.swing = 0;
       p.swinging = false;
@@ -1045,7 +1049,7 @@ export class Game {
       this.far.x = even ? 4.8 : 15.2;
       this.far.y = 45.15;
       this.near.x = even ? 15 : 5;
-      this.near.y = 4.5;
+      this.near.y = 3.2;
     }
     this.placeHeldBall();
     this.highlightBox = {
@@ -1069,7 +1073,7 @@ export class Game {
       srvPartner.x = even ? 4.8 : 15.2;
       srvPartner.y = kitchenSafeY("near");
       rec.x = even ? 5 : 15;
-      rec.y = 39.5;
+      rec.y = 40.6;
       recPartner.x = even ? 15 : 5;
       recPartner.y = kitchenSafeY("far");
     } else {
@@ -1078,7 +1082,7 @@ export class Game {
       srvPartner.x = even ? 15.2 : 4.8;
       srvPartner.y = kitchenSafeY("far");
       rec.x = even ? 15 : 5;
-      rec.y = 4.5;
+      rec.y = 3.2;
       recPartner.x = even ? 5 : 15;
       recPartner.y = kitchenSafeY("near");
     }
@@ -1101,6 +1105,7 @@ export class Game {
     if (this.phase === "dead" || this.phase === "replay") return;
     if (p.swinging) return;
     if (this.phase === "serve" && p !== this.serverPlayer()) return;
+    if (this.pendingHit && this.pendingHit.p === p) this.pendingHit = null;
     p.charging = true;
     if (p.charge < 0.05) p.charge = 0.05;
   }
@@ -1154,21 +1159,40 @@ export class Game {
     p.swing = 0.01;
     this.sfx.hit(0.35, "serve");
     this.lastKind = "serve";
-    this.toast(p === this.near ? "A/D aims the box · SPACE serves" : "Even court · diagonal");
+    this.toast(p === this.near ? "A/D aims the box · SPACE serves" : "Let it bounce, then swing");
+  }
+
+  tryPendingHit() {
+    const hit = this.pendingHit;
+    if (!hit || this.phase !== "rally") return;
+    if (this.time > hit.until) {
+      this.pendingHit = null;
+      return;
+    }
+    const p = hit.p;
+    if (p.swinging) return;
+    if (this.canContact(p, this.ball)) {
+      this.pendingHit = null;
+      this.doSwing(p, hit.power);
+    }
   }
 
   doSwing(p, power) {
-    p.swinging = true;
-    p.swing = 0.01;
     const b = this.ball;
     if (!b.live) return;
     const sideOk = p.side === "near" ? b.y <= NET_Y + 0.25 : b.y >= NET_Y - 0.25;
     if (!sideOk || !this.canContact(p, b)) {
-      if (p === this.near && this.screen === "play") {
-        this.toast(this.needsBounce(p) ? "Let it bounce" : "Whiff");
+      if (this.needsBounce(p)) {
+        this.pendingHit = { p, power, until: this.time + 0.7 };
+        if (p === this.near && this.screen === "play") this.toast("Let it bounce");
+      } else if (p === this.near && this.screen === "play") {
+        this.toast("Whiff");
       }
       return;
     }
+    this.pendingHit = null;
+    p.swinging = true;
+    p.swing = 0.01;
     const d = dist(p.x, p.y, b.x, b.y);
 
     const volley = b.z > 0.42 && this.ball.lastBounceSide !== p.side;
@@ -1360,7 +1384,7 @@ export class Game {
           p.chargeDir = 1;
         }
         p.hand = this.handFor(p, this.ball);
-        p.shotKind = p.charge > 0.28 ? "speedup" : "dink";
+        p.shotKind = p.charge > 0.45 ? "speedup" : "dink";
       }
       if (p.swinging) {
         p.swing += dt * (p.swingRate || 2.2);
@@ -1477,7 +1501,7 @@ export class Game {
         if (p === rec) {
           const even = this.evenScore();
           const tx = p.side === "far" ? (even ? 5 : 15) : even ? 15 : 5;
-          const ty = p.side === "far" ? 39.2 : 4.8;
+          const ty = p.side === "far" ? 40.6 : 3.2;
           this.moveTo(p, tx, ty, dt);
         } else {
           this.moveTo(p, p.x < 10 ? 5 : 15, kitchenSafeY(p.side), dt);
@@ -1485,7 +1509,7 @@ export class Game {
       } else {
         const even = this.evenScore();
         const tx = p.side === "far" ? (even ? 5 : 15) : even ? 15 : 5;
-        const ty = p.side === "far" ? 39.2 : 4.8;
+        const ty = p.side === "far" ? 40.6 : 3.2;
         this.moveTo(p, tx, ty, dt);
       }
       return;
@@ -1681,6 +1705,7 @@ export class Game {
       b.lastBounceSide = side;
       b.bouncesSide = 1;
       this.syncHud();
+      this.tryPendingHit();
       return;
     }
 
@@ -1705,9 +1730,10 @@ export class Game {
       if (!this.match.returnBounced && side === this.match.server) {
         this.match.returnBounced = true;
         this.syncHud();
-        this.toast("Kitchen!  A/D aim · W deep · S short · tap dink · hold to speed-up");
+        this.toast("Kitchen!  Tap = dink · hold past yellow = speed-up · A/D aim");
       }
     }
+    this.tryPendingHit();
   }
 
   endRally(reason, faulter) {
@@ -2011,6 +2037,7 @@ export class Game {
       if (!$("toast").classList.contains("show")) this.toast("Hold SPACE / click to serve underhand");
     }
 
+    if (this.phase === "rally" && this.pendingHit) this.tryPendingHit();
     if (this.phase === "rally" && !this.demo && this.screen === "play") this.recordFrame();
   }
 
@@ -2485,19 +2512,19 @@ export class Game {
     ctx.save();
     ctx.translate(ax + hand * 6 * s, ay - 6 * s);
     ctx.rotate(hand * (0.7 + backswing * 1.45 - fwd * 2.15));
-    this.drawPaddle(ctx, p, s);
+    this.drawPaddle(ctx, p, s * 1.34);
     ctx.restore();
 
     ctx.restore();
   }
 
   drawPaddle(ctx, p, s) {
-    const fw = 12.6 * s;
-    const fh = 16.4 * s;
-    const cr = 3.5 * s;
-    const edge = 1.25 * s;
-    const hw = 3.5 * s;
-    const hh = 9.6 * s;
+    const fw = 14.2 * s;
+    const fh = 18.4 * s;
+    const cr = 3.4 * s;
+    const edge = 1.35 * s;
+    const hw = 3.9 * s;
+    const hh = 10.8 * s;
     const faceTop = -fh * 0.58;
 
     ctx.fillStyle = "#1c1612";
@@ -2545,7 +2572,7 @@ export class Game {
     ctx.fillStyle = "rgba(0,0,0,0.45)";
     ctx.fillRect(x0, pr.sy, w, 7);
     const rising = (p.chargeDir || 1) > 0;
-    ctx.fillStyle = p.charge < 0.28 ? "#d4e157" : p.charge < 0.75 ? "#f0c14a" : "#e45a43";
+    ctx.fillStyle = p.charge < 0.45 ? "#d4e157" : p.charge < 0.78 ? "#f0c14a" : "#e45a43";
     ctx.fillRect(x0, pr.sy, w * p.charge, 7);
     ctx.fillStyle = "rgba(255,255,255,0.85)";
     ctx.fillRect(x0 + w - 2, pr.sy - 1, 2, 9);
