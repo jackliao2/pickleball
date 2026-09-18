@@ -588,8 +588,16 @@ export class Game {
     return true;
   }
 
+  needsBounce(p) {
+    return (
+      (p.side !== this.match.server && !this.match.serveBounced) ||
+      (p.side === this.match.server && !this.match.returnBounced)
+    );
+  }
+
   canContact(p, b) {
     if (!b || !b.live) return false;
+    if (this.needsBounce(p) && b.lastBounceSide !== p.side) return false;
     if (this.inReach(p, b.x, b.y, b.z)) return true;
     const kit = Math.abs(p.y - (p.side === "near" ? 15 : 29)) < 3.4;
     const look = 0.05 + (p.hands || 6) * 0.015 + (kit ? 0.035 : 0);
@@ -1133,12 +1141,18 @@ export class Game {
     if (!b.live) return;
     const sideOk = p.side === "near" ? b.y <= NET_Y + 0.25 : b.y >= NET_Y - 0.25;
     if (!sideOk || !this.canContact(p, b)) {
-      if (p === this.near && this.screen === "play") this.toast("Whiff");
+      if (p === this.near && this.screen === "play") {
+        this.toast(this.needsBounce(p) ? "Let it bounce" : "Whiff");
+      }
       return;
     }
     const d = dist(p.x, p.y, b.x, b.y);
 
     const volley = b.z > 0.42 && this.ball.lastBounceSide !== p.side;
+    if (this.needsBounce(p) && volley) {
+      if (p === this.near && this.screen === "play") this.toast("Let it bounce");
+      return;
+    }
     if (volley && playerInKitchen(p)) {
       this.flash("KITCHEN", 1.15);
       this.sfx.fault();
@@ -1485,9 +1499,7 @@ export class Game {
       }
       this.moveTo(p, land.x + rand(-d.err, d.err) * 0.2, ty, dt);
       const close = this.canContact(p, this.ball);
-      const mustLetBounce =
-        (p.side !== this.match.server && !this.match.serveBounced) ||
-        (p.side === this.match.server && !this.match.returnBounced);
+      const mustLetBounce = this.needsBounce(p);
       const volley = this.ball.z > 0.28 && !bouncedHere;
       if (mustLetBounce && !bouncedHere) {
         /* wait for the two-bounce rule */
@@ -1718,7 +1730,7 @@ export class Game {
       this.sfx.cheer();
       const opps = this.allPlayers().filter((o) => o.side === faulter);
       const farFromBall = opps.every((o) => dist(o.x, o.y, this.ball.x, this.ball.y) > 3.2);
-      if (this.rallyLen <= 1) {
+      if (this.rallyLen <= 1 && this.match.serveBounced && (reason === "double" || reason === "not-up")) {
         this.meta.aces += 1;
         this.flash("ACE", 1.15);
         highlight = "ACE";

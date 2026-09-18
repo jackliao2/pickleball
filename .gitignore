@@ -12,6 +12,7 @@ _verify_modes.mjs
 _verify_score.mjs
 _verify_aim.mjs
 _verify_stats.mjs
+_verify_ace.mjs
 _net_sim.mjs
 _shots/
 
