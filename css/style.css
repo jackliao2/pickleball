@@ -32,7 +32,7 @@ canvas {
   display: block;
   width: 100%;
   height: 100%;
-  cursor: none;
+  cursor: crosshair;
 }
 
 #menu canvas, body.menu-open canvas { cursor: default; }

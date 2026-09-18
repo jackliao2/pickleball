@@ -703,19 +703,15 @@ export class Game {
   steer(p, dt, isNear) {
     let ax = 0,
       ay = 0;
+    const arrowsForP1 = isNear && this.mode !== "p2";
     if (isNear) {
-      if (this.keys.has("KeyA") || this.keys.has("ArrowLeft") && this.mode !== "p2") ax -= 1;
-      if (this.keys.has("KeyD") || this.keys.has("ArrowRight") && this.mode !== "p2") ax += 1;
-      if (this.keys.has("KeyW")) ay += 1;
-      if (this.keys.has("KeyS")) ay -= 1;
+      if (this.keys.has("KeyA") || (arrowsForP1 && this.keys.has("ArrowLeft"))) ax -= 1;
+      if (this.keys.has("KeyD") || (arrowsForP1 && this.keys.has("ArrowRight"))) ax += 1;
+      if (this.keys.has("KeyW") || (arrowsForP1 && this.keys.has("ArrowUp"))) ay += 1;
+      if (this.keys.has("KeyS") || (arrowsForP1 && this.keys.has("ArrowDown"))) ay -= 1;
       if (this.stick.active) {
         ax += this.stick.dx;
         ay -= this.stick.dy;
-      }
-      if (this.pointer.on && !this.touch && this.screen === "play" && this.phase !== "serve") {
-        const u = this.unproject(this.pointer.x, this.pointer.y);
-        ax += clamp((u.x - p.x) * 0.35, -1.2, 1.2);
-        ay += clamp((u.y - p.y) * 0.35, -1.2, 1.2);
       }
     } else {
       if (this.keys.has("ArrowLeft")) ax -= 1;
@@ -726,20 +722,16 @@ export class Game {
     if (this.phase === "serve" && p === this.serverPlayer()) {
       ay = 0;
     }
-    const assist = this.screen === "play" && isNear ? DIFF[this.diff].assist : 0;
-    if (assist && this.ball.live && this.incoming(p)) {
-      const land = this.predictLanding(this.ball);
-      ax += clamp((land.x - p.x) * 0.25, -1, 1) * assist;
-      ay += clamp((land.y - p.y) * 0.25, -1, 1) * assist;
-    }
-    const mag = Math.hypot(ax, ay) || 1;
-    const sp = p.speed;
-    p.vx = (ax / mag) * sp;
-    p.vy = (ay / mag) * sp;
-    if (ax === 0 && ay === 0 && assist === 0) {
+    if (Math.abs(ax) < 0.08) ax = 0;
+    if (Math.abs(ay) < 0.08) ay = 0;
+    if (ax === 0 && ay === 0) {
       p.vx = 0;
       p.vy = 0;
+      return;
     }
+    const mag = Math.hypot(ax, ay);
+    p.vx = (ax / mag) * p.speed;
+    p.vy = (ay / mag) * p.speed;
     p.x += p.vx * dt;
     p.y += p.vy * dt;
   }
