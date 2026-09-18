@@ -284,7 +284,7 @@ export class Game {
       noiseMul: 1,
       serveSkill: 6,
       hands: 6,
-      reachFt: 2.35,
+      reachFt: 3.29,
       stats: emptyStats(),
       charge: 0,
       charging: false,
@@ -565,20 +565,50 @@ export class Game {
     p.noiseMul = Math.max(0.35, 1.4 - st.angle * 0.09);
     p.serveSkill = st.serve;
     p.hands = st.hands;
-    p.reachFt = 1.95 + st.reach * 0.08;
+    p.reachFt = 2.45 + st.reach * 0.14;
+  }
+
+  inReach(p, x, y, z) {
+    const reach = p.reachFt || 3.3;
+    const dx = x - p.x;
+    const dy = y - p.y;
+    const forward = p.side === "near" ? dy : -dy;
+    let fwdMax = reach + 0.45;
+    let sideMax = reach * 1.05;
+    const backMax = 1.1;
+    if (z > 4.9) {
+      fwdMax *= 0.78;
+      sideMax *= 0.78;
+    }
+    if (forward < -backMax || forward > fwdMax) return false;
+    if (Math.abs(dx) > sideMax) return false;
+    const fy = forward >= 0 ? fwdMax : backMax;
+    if ((dx / sideMax) ** 2 + (forward / fy) ** 2 > 1.15) return false;
+    if (z < 0.1 || z > 6.3) return false;
+    return true;
   }
 
   canContact(p, b) {
     if (!b || !b.live) return false;
-    const reach = p.reachFt || 2.35;
-    const dx = b.x - p.x;
-    const dy = b.y - p.y;
-    const forward = p.side === "near" ? dy : -dy;
-    if (forward < -0.2 || forward > reach + 0.12) return false;
-    if (Math.abs(dx) > reach * 0.72) return false;
-    if (Math.hypot(dx, dy) > reach) return false;
-    if (b.z < 0.22 || b.z > 4.7) return false;
-    return true;
+    if (this.inReach(p, b.x, b.y, b.z)) return true;
+    const look = 0.08 + (p.hands || 6) * 0.008;
+    let x = b.x;
+    let y = b.y;
+    let z = b.z;
+    let vx = b.vx;
+    let vy = b.vy;
+    let vz = b.vz;
+    const steps = Math.max(3, Math.ceil(look * 60));
+    const dt = look / steps;
+    for (let i = 0; i < steps; i++) {
+      vz -= G * dt;
+      x += vx * dt;
+      y += vy * dt;
+      z += vz * dt;
+      if (z < 0) break;
+      if (this.inReach(p, x, y, z)) return true;
+    }
+    return false;
   }
 
   openRoster(mode) {
@@ -1471,8 +1501,13 @@ export class Game {
     }
 
     if (!Number.isFinite(b.x) || b.y < -12 || b.y > 58 || b.z > 28 || b.z < -1) {
-      this.flash("OUT", 1);
-      this.endRally("out", b.lastHit);
+      if (b.lastBounceSide != null && b.bouncesSide >= 1) {
+        this.flash("NOT UP", 1.1);
+        this.endRally("not-up", b.lastBounceSide);
+      } else {
+        this.flash("OUT", 1);
+        this.endRally("out", b.lastHit);
+      }
       return;
     }
 
@@ -1507,6 +1542,12 @@ export class Game {
     }
 
     if (out) {
+      if (b.lastBounceSide != null && b.bouncesSide >= 1) {
+        this.flash("DOUBLE BOUNCE", 1.15);
+        this.sfx.fault();
+        this.endRally("double", b.lastBounceSide);
+        return;
+      }
       this.flash("OUT", 1.05);
       this.sfx.fault();
       this.endRally("out", b.lastHit);
