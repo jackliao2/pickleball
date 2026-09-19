@@ -9,8 +9,8 @@ const TAU = Math.PI * 2;
 
 const DIFF = {
   easy: { err: 1.7, react: 0.38, reach: 0.7, chase: 1.85, miss: 0.14 },
-  normal: { err: 1.3, react: 0.3, reach: 0.78, chase: 1.2, miss: 0.12 },
-  hard: { err: 0.45, react: 0.12, reach: 0.98, chase: 0.28, miss: 0 },
+  normal: { err: 1.25, react: 0.28, reach: 0.8, chase: 1.1, miss: 0.1 },
+  hard: { err: 0.6, react: 0.15, reach: 0.94, chase: 0.38, miss: 0.025 },
 };
 
 const STAT_LIST = [

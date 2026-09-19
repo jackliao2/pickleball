@@ -303,8 +303,8 @@ try {
     assert(rates.easy.rate < rates.normal.rate, `easy return rate should be below normal (${rateDetail})`);
     assert(rates.normal.rate < rates.hard.rate, `normal return rate should be below hard (${rateDetail})`);
     assert(rates.easy.rate >= 0.35 && rates.easy.rate <= 0.75, `easy return rate should stay approachable (${rateDetail})`);
-    assert(rates.normal.rate >= 0.65 && rates.normal.rate <= 0.92, `normal return rate should stay competitive (${rateDetail})`);
-    assert(rates.hard.rate >= 0.9, `hard return rate should feel demanding (${rateDetail})`);
+    assert(rates.normal.rate >= 0.82 && rates.normal.rate <= 0.94, `normal return rate should stay competitive (${rateDetail})`);
+    assert(rates.hard.rate >= 0.93 && rates.hard.rate <= 0.99, `hard should be demanding but not perfect (${rateDetail})`);
     assert.deepEqual(errors, []);
     passed("difficulty calibration", rateDetail);
     await context.close();
