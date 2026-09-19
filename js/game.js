@@ -811,8 +811,10 @@ export class Game {
   resize() {
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     const box = $("app") || this.canvas;
-    this.w = Math.max(640, Math.floor(box.clientWidth || window.innerWidth));
-    this.h = Math.max(400, Math.floor(box.clientHeight || window.innerHeight));
+    const cw = Math.floor(box.clientWidth || 0);
+    const ch = Math.floor(box.clientHeight || 0);
+    this.w = cw > 120 ? cw : Math.max(800, Math.floor(window.innerWidth));
+    this.h = ch > 120 ? ch : Math.max(480, Math.floor(window.innerHeight));
     this.canvas.width = Math.floor(this.w * dpr);
     this.canvas.height = Math.floor(this.h * dpr);
     this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
