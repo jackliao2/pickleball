@@ -9,7 +9,7 @@ const TAU = Math.PI * 2;
 
 const DIFF = {
   easy: { err: 1.7, react: 0.38, reach: 0.7, chase: 1.85, miss: 0.14 },
-  normal: { err: 1.3, react: 0.3, reach: 0.78, chase: 1.2, miss: 0.08 },
+  normal: { err: 1.3, react: 0.3, reach: 0.78, chase: 1.2, miss: 0.12 },
   hard: { err: 0.45, react: 0.12, reach: 0.98, chase: 0.28, miss: 0 },
 };
 
@@ -40,6 +40,7 @@ const SHOES = ["#efe6d8", "#222222", "#e45a43", "#1aa39a", "#f4f1e8"];
 const HATS = ["visor", "cap", "band", "none"];
 const HAIR_STYLES = ["short", "fade", "bun", "pony", "bald"];
 const LOOK_KEY = "pb-look-v1";
+const TUTORIAL_KEY = "pb-tutorial-v1";
 
 const DEFAULT_YOU_LOOK = {
   skin: "#e2b08c",
@@ -412,6 +413,7 @@ export class Game {
     this.pendingHit = null;
     this.replay = null;
     this.challengeIndex = -1;
+    this.tutorial = { active: false, step: 0 };
 
     this.bind();
     this.resize();
@@ -720,6 +722,8 @@ export class Game {
     $("btn-roster-back").onclick = () => this.closeRoster();
     $("btn-howto").onclick = () => this.showHowTo(true);
     $("btn-howto-close").onclick = () => this.showHowTo(false);
+    $("btn-coach-skip").onclick = () => this.finishTutorial();
+    $("btn-tutorial-replay").onclick = () => this.replayTutorial();
     $("btn-pause").onclick = () => this.togglePause();
     $("btn-resume").onclick = () => this.togglePause(false);
     $("btn-menu").onclick = () => this.toMenu();
@@ -920,6 +924,8 @@ export class Game {
     this.flash("PLAY", 0.8);
     this.sfx.whistle();
     this.syncHud();
+    if (mode === "cpu" && !this.tutorialDone()) this.startTutorial();
+    else this.hideTutorial();
   }
 
   applyBuild(p, build) {
@@ -1259,6 +1265,7 @@ export class Game {
     this.diff = this.menuDiff || "normal";
     document.body.classList.add("menu-open");
     document.body.classList.remove("game-open");
+    this.hideTutorial();
     $("menu").hidden = false;
     $("roster").hidden = true;
     $("pause").hidden = true;
@@ -1277,6 +1284,82 @@ export class Game {
   showHowTo(on) {
     $("howto").hidden = !on;
     $("menu").hidden = on;
+  }
+
+  tutorialDone() {
+    try {
+      return localStorage.getItem(TUTORIAL_KEY) === "done";
+    } catch {
+      return false;
+    }
+  }
+
+  startTutorial() {
+    this.tutorial.active = true;
+    this.tutorial.step = 0;
+    this.renderTutorial();
+  }
+
+  advanceTutorial(step) {
+    if (!this.tutorial.active || step <= this.tutorial.step) return;
+    this.tutorial.step = Math.min(2, step);
+    this.renderTutorial();
+  }
+
+  finishTutorial() {
+    this.tutorial.active = false;
+    $("coach").hidden = true;
+    try {
+      localStorage.setItem(TUTORIAL_KEY, "done");
+    } catch {
+      /* ignore */
+    }
+    if (this.screen === "play") this.toast("Guided start complete");
+  }
+
+  hideTutorial() {
+    this.tutorial.active = false;
+    $("coach").hidden = true;
+  }
+
+  replayTutorial() {
+    try {
+      localStorage.removeItem(TUTORIAL_KEY);
+    } catch {
+      /* ignore */
+    }
+    this.showHowTo(false);
+    $("ctrl-hint").textContent = "Guided tutorial ready. Start Singles vs CPU to replay it.";
+  }
+
+  renderTutorial() {
+    if (!this.tutorial.active) return;
+    const touch = this.touch || window.matchMedia("(pointer: coarse)").matches;
+    const steps = [
+      {
+        title: "Move and aim",
+        copy: touch
+          ? "Drag the left stick. Movement also aims where your next shot will land."
+          : "Press WASD. Movement also aims where your next shot will land.",
+      },
+      {
+        title: "Serve underhand",
+        copy: touch
+          ? "Tap SWING for a soft serve, or hold briefly for more pace."
+          : "Tap Space for a soft serve, or hold briefly for more pace.",
+      },
+      {
+        title: "Respect the two-bounce rule",
+        copy: touch
+          ? "Let the opponent's return bounce on your side, then tap SWING to send it back."
+          : "Let the opponent's return bounce on your side, then tap Space to send it back.",
+      },
+    ];
+    const step = steps[this.tutorial.step];
+    $("coach-step").textContent = `Guided start · ${this.tutorial.step + 1} / ${steps.length}`;
+    $("coach-title").textContent = step.title;
+    $("coach-copy").textContent = step.copy;
+    $("coach").hidden = false;
   }
 
   togglePause(force) {
@@ -1549,11 +1632,13 @@ export class Game {
 
   releaseSwing(p) {
     if (!p.charging && p.charge <= 0) return;
+    const tutorialServe = this.tutorial.active && this.tutorial.step === 1 && p === this.near && this.phase === "serve";
     p.charging = false;
     const power = clamp(p.charge, 0.08, 1);
     p.charge = 0;
     if (this.phase === "serve") {
       if (p === this.serverPlayer()) this.doServe(p, power);
+      if (tutorialServe && this.phase === "rally") this.advanceTutorial(2);
       return;
     }
     if (this.phase !== "rally") return;
@@ -1686,6 +1771,9 @@ export class Game {
     b.lastBounceSide = null;
     b.bouncesSide = 0;
     this.rallyLen += 1;
+    if (this.tutorial.active && this.tutorial.step === 2 && p === this.near && this.rallyLen >= 3) {
+      this.finishTutorial();
+    }
     this.sfx.hit(power, kind);
     if (kind === "smash") this.buzz([24, 30, 48]);
     else if (kind === "speedup") this.buzz([16, 24, 32]);
@@ -1890,6 +1978,9 @@ export class Game {
     }
     if (this.phase === "serve" && p === this.serverPlayer()) {
       ay = 0;
+    }
+    if (isNear && this.tutorial.active && this.tutorial.step === 0 && Math.hypot(ax, ay) > 0.14) {
+      this.advanceTutorial(1);
     }
     if (Math.abs(ax) < 0.08) ax = 0;
     if (Math.abs(ay) < 0.08) ay = 0;
@@ -2512,7 +2603,10 @@ export class Game {
 
     if (this.phase === "serve" && this.screen === "play" && this.serverPlayer() === this.near) {
       this.toastT = Math.max(this.toastT, 0.2);
-      if (!$("toast").classList.contains("show")) this.toast("Hold SPACE / click to serve underhand");
+      if (!$("toast").classList.contains("show")) {
+        const touch = this.touch || window.matchMedia("(pointer: coarse)").matches;
+        this.toast(touch ? "Tap or hold SWING to serve underhand" : "Hold SPACE / click to serve underhand");
+      }
     }
 
     if (this.phase === "rally" && this.pendingHit) this.tryPendingHit();

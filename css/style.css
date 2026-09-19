@@ -266,6 +266,54 @@ canvas {
 }
 #toast.show { opacity: 1; }
 
+.coach {
+  position: absolute;
+  z-index: 7;
+  top: 150px;
+  left: 50%;
+  width: min(380px, calc(100% - 32px));
+  transform: translateX(-50%);
+  padding: 14px 16px 15px;
+  border: 1px solid rgba(212, 225, 87, 0.42);
+  border-radius: 14px;
+  background: rgba(7, 24, 44, 0.92);
+  box-shadow: 0 18px 45px rgba(0,0,0,0.32);
+  backdrop-filter: blur(12px);
+  pointer-events: none;
+}
+.coach-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+  color: var(--yellow);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.coach-top button {
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255,255,255,0.06);
+  color: var(--paper);
+  font: 700 11px Outfit, sans-serif;
+  cursor: pointer;
+  pointer-events: auto;
+}
+.coach strong {
+  display: block;
+  margin-bottom: 3px;
+  font-size: 18px;
+}
+.coach p {
+  color: rgba(244,241,232,0.78);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
 .overlay {
   position: absolute;
   inset: 0;
@@ -776,6 +824,13 @@ body.menu-open #touch { display: none; }
   #howto,
   #challenge { align-items: flex-start; }
   #hud { padding: 6px 10px 0; gap: 4px; }
+  .coach {
+    top: 82px;
+    width: min(340px, calc(100% - 260px));
+    padding: 9px 12px 10px;
+  }
+  .coach strong { font-size: 15px; }
+  .coach p { font-size: 11px; }
   .chips { gap: 4px; }
   #stick {
     left: max(12px, env(safe-area-inset-left));
@@ -804,6 +859,7 @@ body.menu-open #touch { display: none; }
   .sb-name { font-size: 11px; }
   .sb-call { font-size: 16px; }
   #banner { font-size: 36px; top: 32%; }
+  .coach { top: 172px; }
   #btn-full { display: none; }
   .card { padding: 22px 16px 16px; }
   h1 { font-size: 52px; }
