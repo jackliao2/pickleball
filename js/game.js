@@ -8,9 +8,9 @@ const NET_HS = 3;
 const TAU = Math.PI * 2;
 
 const DIFF = {
-  easy: { speed: 7.6, err: 1.35, react: 0.16 },
-  normal: { speed: 8.4, err: 1.1, react: 0.2 },
-  hard: { speed: 9.8, err: 0.45, react: 0.12 },
+  easy: { err: 1.7, react: 0.38, reach: 0.7, chase: 1.85, miss: 0.14 },
+  normal: { err: 1.3, react: 0.3, reach: 0.78, chase: 1.2, miss: 0.08 },
+  hard: { err: 0.45, react: 0.12, reach: 0.98, chase: 0.28, miss: 0 },
 };
 
 const STAT_LIST = [
@@ -912,7 +912,8 @@ export class Game {
   }
 
   inReach(p, x, y, z) {
-    const reach = p.reachFt || 3.3;
+    let reach = p.reachFt || 3.3;
+    if (this.isCpuSide(p) && !this.demo) reach *= DIFF[this.diff]?.reach ?? 1;
     const dx = x - p.x;
     const dy = y - p.y;
     const forward = p.side === "near" ? dy : -dy;
@@ -967,7 +968,8 @@ export class Game {
     const hopped = b.lastBounceSide === p.side;
     if (!hopped) return false;
     const kit = Math.abs(p.y - (p.side === "near" ? 15 : 29)) < 3.4;
-    const look = 0.03 + (p.hands || 6) * 0.028 + (kit ? 0.05 : 0) + (hopped ? 0.08 : 0);
+    let look = 0.03 + (p.hands || 6) * 0.028 + (kit ? 0.05 : 0) + (hopped ? 0.08 : 0);
+    if (this.isCpuSide(p) && !this.demo && this.diff !== "hard") look *= 0.42;
     let x = b.x;
     let y = b.y;
     let z = b.z;
@@ -1434,6 +1436,8 @@ export class Game {
       p.chargeDir = 1;
       p.aiWind = 0;
       p.aiChaseX = null;
+      p.aiTrackHit = null;
+      p.aiWhiff = false;
     }
 
     const even = this.evenScore();
@@ -1929,6 +1933,13 @@ export class Game {
 
     const incoming = this.incoming(p);
     const land = this.predictLanding(this.ball);
+    if (p.aiTrackHit !== this.ball.lastHit) {
+      p.aiTrackHit = this.ball.lastHit;
+      p.aiOffX = rand(-d.chase, d.chase);
+      p.aiOffY = rand(-d.chase * 0.35, d.chase * 0.3);
+      p.aiWhiff = Math.random() < (d.miss || 0);
+      p.aiChaseX = null;
+    }
     if (this.time - p.lastVolley < 0.55) {
       this.moveTo(p, p.x, outY, dt);
       return;
@@ -1950,9 +1961,10 @@ export class Game {
       } else {
         ty = land.y + (p.side === "near" ? -0.8 : 0.8);
       }
-      if (p.aiChaseX == null) p.aiChaseX = land.x;
-      p.aiChaseX = lerp(p.aiChaseX, land.x, 0.14);
-      this.moveTo(p, p.aiChaseX, ty, dt);
+      const tx = land.x + (p.aiOffX || 0);
+      if (p.aiChaseX == null) p.aiChaseX = p.x;
+      p.aiChaseX = lerp(p.aiChaseX, tx, this.diff === "hard" ? 0.18 : 0.08);
+      this.moveTo(p, p.aiChaseX, ty + (p.aiOffY || 0), dt);
       const close = this.canContact(p, this.ball);
       const mustLetBounce = this.needsBounce(p);
       const volley = this.ball.z > 0.28 && !bouncedHere;
@@ -1960,12 +1972,12 @@ export class Game {
         /* wait for the two-bounce rule */
       } else if (volley && playerInKitchen(p)) {
         this.moveTo(p, p.x, outY, dt);
-      } else if (close && !p.swinging) {
+      } else if (close && !p.swinging && !p.aiWhiff) {
         if (volley && playerInKitchen(p)) {
           this.moveTo(p, p.x, outY, dt);
         } else {
           p.aiWind = (p.aiWind || 0) + dt;
-          const wait = Math.max(0.03, d.react * lerp(1.7, 0.32, (p.hands || 6) / 10));
+          const wait = Math.max(0.05, d.react * lerp(1.45, 0.55, (p.hands || 6) / 10));
           if (p.aiWind >= wait) {
             p.charge = this.chooseAIShot(p);
             this.doSwing(p, p.charge);
@@ -1978,6 +1990,7 @@ export class Game {
       }
     } else {
       p.aiChaseX = null;
+      p.aiTrackHit = null;
       const homeY = this.twoBounceDone() ? outY : p.side === "near" ? 5.5 : 38.5;
       const homeX = this.isDoubles() ? (p.x < 10 ? 5 : 15) : clamp(lerp(p.x, this.ball.x, 0.18), 3, 17);
       this.moveTo(p, homeX, homeY, dt);
