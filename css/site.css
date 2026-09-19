@@ -1,0 +1,145 @@
+body.docs {
+  overflow: auto;
+  height: auto;
+  min-height: 100dvh;
+  user-select: text;
+  -webkit-user-select: text;
+  touch-action: auto;
+}
+
+.docs-shell {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 20px 20px 72px;
+}
+
+.docs-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: center;
+  padding: 8px 0 28px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 28px;
+}
+
+.docs-nav a {
+  color: var(--paper);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 600;
+  opacity: 0.78;
+}
+
+.docs-nav a:hover,
+.docs-nav a.on {
+  opacity: 1;
+  color: var(--yellow);
+}
+
+.docs-nav .play {
+  background: var(--yellow);
+  color: var(--ink);
+  opacity: 1;
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-weight: 800;
+}
+
+.docs-kicker {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--yellow);
+  margin-bottom: 8px;
+}
+
+.docs-shell h1 {
+  font-family: "Barlow Condensed", sans-serif;
+  font-size: clamp(36px, 6vw, 52px);
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  line-height: 0.95;
+  margin: 0 0 16px;
+}
+
+.docs-shell h2 {
+  font-size: 20px;
+  font-weight: 800;
+  margin: 2em 0 0.55em;
+}
+
+.docs-shell h3 {
+  font-size: 16px;
+  font-weight: 700;
+  margin: 1.4em 0 0.4em;
+}
+
+.docs-shell p,
+.docs-shell li {
+  line-height: 1.65;
+  color: rgba(244, 241, 232, 0.88);
+  font-size: 16px;
+}
+
+.docs-shell p { margin: 0 0 1em; }
+
+.docs-shell ul,
+.docs-shell ol {
+  margin: 0 0 1.1em;
+  padding-left: 1.2em;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45em;
+}
+
+.docs-shell strong { color: #fff; font-weight: 700; }
+
+.docs-meta {
+  font-size: 13px;
+  opacity: 0.55;
+  margin-bottom: 1.6em;
+}
+
+.docs-note {
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin: 0 0 1.4em;
+  font-size: 14px;
+  line-height: 1.55;
+  color: rgba(244, 241, 232, 0.8);
+}
+
+.docs-foot {
+  margin-top: 48px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+  font-size: 13px;
+  opacity: 0.55;
+}
+
+.site-foot {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  justify-content: center;
+  align-items: center;
+  padding: 4px 8px 2px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.site-foot a {
+  color: rgba(244, 241, 232, 0.7);
+  text-decoration: none;
+}
+
+.site-foot a:hover { color: var(--yellow); }
+
+@media (max-width: 1100px) {
+  .site-foot { padding: 10px 12px 14px; }
+}

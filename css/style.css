@@ -25,10 +25,11 @@ html, body {
   min-height: 100dvh;
   display: grid;
   grid-template-columns: 160px minmax(0, 1fr) 160px;
+  grid-template-rows: 1fr auto;
   gap: 12px;
   max-width: 1440px;
   margin: 0 auto;
-  padding: 12px;
+  padding: 12px 12px 8px;
   align-items: stretch;
 }
 
@@ -58,7 +59,7 @@ html, body {
   position: relative;
   width: 100%;
   min-height: 0;
-  height: calc(100dvh - 24px);
+  height: calc(100dvh - 56px);
   border-radius: 14px;
   overflow: hidden;
   background: #07182c;
@@ -580,6 +581,16 @@ h3 { font-size: 15px; letter-spacing: 0.12em; text-transform: uppercase; margin:
 .btn.ghost { background: transparent; }
 .btn:hover { filter: brightness(1.08); }
 
+.menu-links {
+  margin: 14px 0 0;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+  opacity: 0.8;
+}
+.menu-links a { color: var(--paper); text-decoration: none; }
+.menu-links a:hover { color: var(--yellow); }
+
 .rules { padding-left: 18px; display: flex; flex-direction: column; gap: 10px; }
 .rules li { line-height: 1.45; color: rgba(244,241,232,0.86); font-size: 14px; }
 
@@ -661,7 +672,7 @@ body.menu-open #toolbar #btn-pause { display: none; }
   }
   .ad-rail { display: none; }
   #app {
-    height: 100dvh;
+    height: calc(100dvh - 40px);
     border-radius: 0;
     box-shadow: none;
   }
