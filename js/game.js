@@ -519,21 +519,16 @@ export class Game {
   }
 
   renderVenuePicks() {
-    document.querySelectorAll(".venue-picks").forEach((box) => {
-      box.innerHTML = "";
-      ["out", "in"].forEach((kind) => {
-        const lab = document.createElement("span");
-        lab.className = "venue-kind";
-        lab.textContent = kind === "out" ? "Outdoor" : "Indoor";
-        box.appendChild(lab);
-        VENUES.filter((v) => v.kind === kind).forEach((v) => {
-          const b = document.createElement("button");
-          b.type = "button";
-          b.textContent = v.name;
-          b.classList.toggle("on", this.venue?.id === v.id);
-          b.onclick = () => this.setVenue(v.id);
-          box.appendChild(b);
-        });
+    document.querySelectorAll(".venue-grid").forEach((grid) => {
+      const kind = grid.dataset.kind;
+      grid.innerHTML = "";
+      VENUES.filter((v) => v.kind === kind).forEach((v) => {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.textContent = v.name;
+        b.classList.toggle("on", this.venue?.id === v.id);
+        b.onclick = () => this.setVenue(v.id);
+        grid.appendChild(b);
       });
     });
   }
@@ -1162,6 +1157,7 @@ export class Game {
       }
       const r = document.createElement("button");
       r.type = "button";
+      r.className = "wide";
       r.textContent = "Random";
       r.onclick = () => this.setBuild(who, { name: "Random", ...rollStats() }, "random");
       presets.appendChild(r);

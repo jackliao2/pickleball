@@ -287,23 +287,24 @@ canvas {
 .budget { font-size: 12px; font-weight: 700; color: var(--yellow); }
 .budget.over { color: var(--coral); }
 .presets {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
   gap: 5px;
-  min-height: 56px;
-  align-content: start;
 }
 .presets button {
   font: 650 11px Outfit, sans-serif;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.03em;
   color: var(--paper);
   background: rgba(255,255,255,0.06);
   border: 1px solid var(--line);
-  border-radius: 999px;
-  padding: 4px 8px;
+  border-radius: 8px;
+  padding: 6px 4px;
   cursor: pointer;
+  text-align: center;
+  width: 100%;
 }
 .presets button.on { background: var(--yellow); color: var(--ink); border-color: var(--yellow); }
+.presets button.wide { grid-column: 1 / -1; }
 .stat-list { display: flex; flex-direction: column; gap: 4px; }
 .stat-row {
   display: grid;
@@ -422,7 +423,7 @@ canvas {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
 }
 .venue-head span {
   font-size: 11px;
@@ -432,25 +433,44 @@ canvas {
   opacity: 0.75;
 }
 .venue-head .btn { width: auto; margin: 0; padding: 4px 10px; font-size: 11px; }
-.venue-picks { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
-.venue-kind {
+.venue-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.venue-col {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 8px;
+}
+.venue-col p {
+  margin: 0 0 6px;
   font-size: 10px;
   font-weight: 700;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  opacity: 0.45;
-  margin-left: 4px;
+  text-align: center;
+  opacity: 0.5;
 }
-.venue-picks button {
+.venue-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px;
+}
+.venue-grid button {
   font: 650 11px Outfit, sans-serif;
   color: var(--paper);
   background: rgba(255,255,255,0.06);
   border: 1px solid var(--line);
-  border-radius: 999px;
-  padding: 4px 8px;
+  border-radius: 8px;
+  padding: 6px 4px;
   cursor: pointer;
+  text-align: center;
+  width: 100%;
 }
-.venue-picks button.on { background: var(--yellow); color: var(--ink); border-color: var(--yellow); }
+.venue-grid button.on { background: var(--yellow); color: var(--ink); border-color: var(--yellow); }
+.venue-grid button:last-child:nth-child(odd) { grid-column: 1 / -1; }
 .roster-top .kicker { margin-bottom: 4px; }
 @media (max-width: 700px) {
   .roster-grid { grid-template-columns: 1fr; }
