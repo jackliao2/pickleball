@@ -722,6 +722,7 @@ h3 { font-size: 15px; letter-spacing: 0.12em; text-transform: uppercase; margin:
   pointer-events: none;
 }
 #btn-swing {
+  --charge: 0deg;
   pointer-events: auto;
   touch-action: none;
   -webkit-touch-callout: none;
@@ -731,13 +732,20 @@ h3 { font-size: 15px; letter-spacing: 0.12em; text-transform: uppercase; margin:
   width: 108px;
   height: 108px;
   border-radius: 50%;
-  border: 0;
-  background: var(--yellow);
-  color: var(--ink);
+  border: 3px solid rgba(212, 225, 87, 0.5);
+  background:
+    radial-gradient(circle, rgba(7, 24, 44, 0.9) 0 66%, transparent 68%),
+    conic-gradient(var(--orange) 0 var(--charge), rgba(212, 225, 87, 0.34) var(--charge) 360deg);
+  color: var(--yellow);
   font: 800 14px Outfit, sans-serif;
   letter-spacing: 0.08em;
   cursor: pointer;
+  box-shadow: 0 9px 24px rgba(0,0,0,0.3);
+  text-shadow: 0 1px 4px rgba(0,0,0,0.7);
+  transition: transform 0.08s ease, opacity 0.15s ease;
 }
+#btn-swing.charging { transform: scale(0.95); }
+#btn-swing.inactive { opacity: 0.72; }
 
 body.menu-open #hud,
 body.menu-open #toolbar #btn-pause { display: none; }

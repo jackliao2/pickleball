@@ -189,6 +189,7 @@
         </ul>
         <h3>Controls</h3>
         <p class="hint"><strong>You (near side):</strong> WASD to move and to aim. A/D = left/right landing. W = deeper / walk up to the kitchen. S = shorter. The yellow pip shows the landing.<br />
+        <strong>Phone / tablet:</strong> drag the left stick to move and aim. Tap SWING for touch; hold it to add pace.<br />
         <strong>Kitchen (like the pros):</strong> after the two-bounce, walk to the line (W). Soft dinks land in the kitchen — let those bounce, then tap. When a ball sits up above the net, hold Space to yellow for a speed-up. Doubles lives at the kitchen line; singles also comes in, but the four-person hands battle is a doubles thing.<br />
         Serves and returns must bounce first.<br />
         <strong>Doubles:</strong> you steer the near-right/left player; your partner is AI.<br />
@@ -243,12 +244,12 @@
 
     <div id="touch" hidden>
       <div id="stick"><div id="knob"></div></div>
-      <button type="button" id="btn-swing">SWING</button>
+      <button type="button" id="btn-swing" aria-label="Swing">SWING</button>
     </div>
 
     <div id="toolbar">
       <button type="button" id="btn-pause" title="Pause">II</button>
-      <button type="button" id="btn-mute" title="Sound">♪</button>
+      <button type="button" id="btn-mute" title="Mute sound" aria-label="Mute sound" aria-pressed="false">♪</button>
       <button type="button" id="btn-full" title="Fullscreen">Fullscreen</button>
     </div>
     </div>

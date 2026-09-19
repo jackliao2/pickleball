@@ -114,6 +114,13 @@ try {
     assert.equal(await page.locator("#coach").isHidden(), true);
     assert.equal(await page.evaluate(() => localStorage.getItem("pb-tutorial-v1")), "done");
     passed("guided tutorial", "move → serve → legal return → complete");
+    await page.click("#btn-mute");
+    assert.equal(await page.getAttribute("#btn-mute", "aria-pressed"), "true");
+    assert.equal(await page.evaluate(() => localStorage.getItem("pb-muted-v1")), "1");
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.waitForFunction(() => !!window.game);
+    assert.equal(await page.getAttribute("#btn-mute", "aria-pressed"), "true");
+    passed("sound preference", "mute state persists after reload");
     await context.close();
   }
 
@@ -128,6 +135,8 @@ try {
     await page.click("#btn-cpu");
     await page.click("#btn-start-match");
     await page.touchscreen.tap(20, 20);
+    await page.waitForFunction(() => document.querySelector("#btn-swing").textContent === "SERVE");
+    await page.waitForFunction(() => document.querySelector("#toast").textContent.includes("SWING"));
     const styles = await page.evaluate(() => ({
       stick: getComputedStyle(document.querySelector("#stick")).touchAction,
       swing: getComputedStyle(document.querySelector("#btn-swing")).touchAction,
@@ -147,8 +156,47 @@ try {
     assert.equal(drag.scrollY, 0);
     await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
     assert.deepEqual(await page.evaluate(() => ({ active: window.game.stick.active, dx: window.game.stick.dx, dy: window.game.stick.dy })), { active: false, dx: 0, dy: 0 });
+    const swingCenter = await page.locator("#btn-swing").evaluate((el) => {
+      const r = el.getBoundingClientRect();
+      return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+    });
+    await page.evaluate(() => {
+      window.__testRandom = Math.random;
+      Math.random = () => 0.5;
+    });
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: swingCenter.x, y: swingCenter.y, id: 2 }] });
+    await page.waitForFunction(() => document.querySelector("#btn-swing").classList.contains("charging"));
+    const charge = await page.locator("#btn-swing").textContent();
+    assert.match(charge, /^\d+%$/);
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+    await page.evaluate(() => {
+      Math.random = window.__testRandom;
+      delete window.__testRandom;
+    });
+    await page.waitForFunction(() => window.game.phase === "rally");
+    await page.evaluate(() => {
+      const g = window.game;
+      g.match.server = "near";
+      g.match.serveBounced = true;
+      g.match.returnBounced = false;
+      g.ball.live = true;
+      g.ball.lastHit = "far";
+      g.syncActionButton();
+    });
+    assert.equal(await page.locator("#btn-swing").textContent(), "BOUNCE");
+    assert.equal(await page.getAttribute("#btn-swing", "aria-label"), "Let the ball bounce");
+    await page.setViewportSize({ width: 844, height: 390 });
+    await page.waitForTimeout(100);
+    const landscape = await page.evaluate(() => {
+      const stick = document.querySelector("#stick").getBoundingClientRect();
+      const swing = document.querySelector("#btn-swing").getBoundingClientRect();
+      return { stick, swing, width: innerWidth, height: innerHeight };
+    });
+    assert(landscape.stick.left >= 0 && landscape.stick.bottom <= landscape.height);
+    assert(landscape.swing.right <= landscape.width && landscape.swing.bottom <= landscape.height);
+    assert(landscape.stick.right < landscape.swing.left, "landscape controls must not overlap");
     assert.deepEqual(errors, []);
-    passed("mobile touch controls", "drag captured, no browser scroll, clean release");
+    passed("mobile touch controls", `portrait + landscape, charge ${charge}, contextual BOUNCE`);
     await context.close();
   }
 

@@ -41,6 +41,7 @@ const HATS = ["visor", "cap", "band", "none"];
 const HAIR_STYLES = ["short", "fade", "bun", "pony", "bald"];
 const LOOK_KEY = "pb-look-v1";
 const TUTORIAL_KEY = "pb-tutorial-v1";
+const MUTE_KEY = "pb-muted-v1";
 
 const DEFAULT_YOU_LOOK = {
   skin: "#e2b08c",
@@ -365,6 +366,11 @@ export class Game {
     this.canvas = $("c");
     this.ctx = this.canvas.getContext("2d");
     this.sfx = new Sfx();
+    try {
+      this.sfx.muted = localStorage.getItem(MUTE_KEY) === "1";
+    } catch {
+      /* ignore */
+    }
     this.keys = new Set();
     this.pointer = { x: 0, y: 0, down: false, on: false };
     this.stick = { dx: 0, dy: 0, active: false };
@@ -416,6 +422,7 @@ export class Game {
     this.tutorial = { active: false, step: 0 };
 
     this.bind();
+    this.syncSoundButton();
     this.resize();
     this.resetPoint(true);
     this.loop = this.loop.bind(this);
@@ -1334,7 +1341,7 @@ export class Game {
 
   renderTutorial() {
     if (!this.tutorial.active) return;
-    const touch = this.touch || window.matchMedia("(pointer: coarse)").matches;
+    const touch = this.isTouchInput();
     const steps = [
       {
         title: "Move and aim",
@@ -1370,7 +1377,24 @@ export class Game {
 
   toggleMute() {
     this.sfx.muted = !this.sfx.muted;
-    $("btn-mute").textContent = this.sfx.muted ? "✕" : "♪";
+    try {
+      localStorage.setItem(MUTE_KEY, this.sfx.muted ? "1" : "0");
+    } catch {
+      /* ignore */
+    }
+    this.syncSoundButton();
+  }
+
+  syncSoundButton() {
+    const button = $("btn-mute");
+    button.textContent = this.sfx.muted ? "✕" : "♪";
+    button.title = this.sfx.muted ? "Unmute sound" : "Mute sound";
+    button.setAttribute("aria-label", button.title);
+    button.setAttribute("aria-pressed", String(this.sfx.muted));
+  }
+
+  isTouchInput() {
+    return this.touch || window.matchMedia("(pointer: coarse)").matches;
   }
 
   toggleFull() {
@@ -1680,7 +1704,7 @@ export class Game {
     p.swing = 0.01;
     this.sfx.hit(0.35, "serve");
     this.lastKind = "serve";
-    this.toast(p === this.near ? "A/D aims the box · SPACE serves" : "Let it bounce, then swing");
+    this.toast(p === this.near ? "Serve in · let the return bounce" : "Let it bounce, then swing");
   }
 
   tryPendingHit() {
@@ -2289,7 +2313,9 @@ export class Game {
       if (!this.match.returnBounced && side === this.match.server) {
         this.match.returnBounced = true;
         this.syncHud();
-        this.toast("Kitchen: high ball = hold Space (yellow) to speed-up. Low ball = let it bounce, then tap");
+        this.toast(this.isTouchInput()
+          ? "Kitchen: hold SWING on a high ball. Let low balls bounce, then tap"
+          : "Kitchen: high ball = hold Space (yellow) to speed-up. Low ball = let it bounce, then tap");
       }
     }
     this.tryPendingHit();
@@ -2485,7 +2511,7 @@ export class Game {
     this.replay = { frames: this.tape.slice(), i: 0, label };
     this.flash(label, 1.35);
     this.sfx.crowd(1.15);
-    this.toast("SPACE / click to skip");
+    this.toast(this.isTouchInput() ? "Tap to skip" : "SPACE / click to skip");
   }
 
   skipReplay() {
@@ -2538,6 +2564,52 @@ export class Game {
     $("chip-serve").classList.toggle("on", this.match.serveBounced);
     $("chip-return").classList.toggle("on", this.match.returnBounced);
     $("chip-rally").textContent = `Rally ${this.rallyLen}`;
+    this.syncActionButton();
+  }
+
+  syncActionButton() {
+    const button = $("btn-swing");
+    if (!button || !this.near) return;
+    const charging = this.near.charging;
+    const needsBounce =
+      this.phase === "rally" &&
+      this.ball.live &&
+      this.ball.lastHit === "far" &&
+      ((this.match.server === "far" && !this.match.serveBounced) ||
+        (this.match.server === "near" && this.match.serveBounced && !this.match.returnBounced));
+    let label = "SWING";
+    let aria = "Swing";
+    let inactive = false;
+    if (charging) {
+      label = `${Math.round(this.near.charge * 100)}%`;
+      aria = "Release to swing";
+    } else if (this.phase === "replay") {
+      label = "SKIP";
+      aria = "Skip replay";
+    } else if (this.phase === "dead") {
+      label = "POINT";
+      aria = "Wait for the next point";
+      inactive = true;
+    } else if (this.phase === "serve") {
+      if (this.serverPlayer() === this.near) {
+        label = "SERVE";
+        aria = "Serve";
+      } else {
+        label = "WAIT";
+        aria = "Opponent serving";
+        inactive = true;
+      }
+    } else if (needsBounce) {
+      label = "BOUNCE";
+      aria = "Let the ball bounce";
+      inactive = true;
+    }
+    if (button.textContent !== label) button.textContent = label;
+    if (button.getAttribute("aria-label") !== aria) button.setAttribute("aria-label", aria);
+    button.classList.toggle("charging", charging);
+    button.classList.toggle("inactive", inactive);
+    const charge = `${Math.round((charging ? this.near.charge : 0) * 360)}deg`;
+    if (button.style.getPropertyValue("--charge") !== charge) button.style.setProperty("--charge", charge);
   }
 
   flash(text, t) {
@@ -2564,6 +2636,7 @@ export class Game {
       this.hitStop -= dt;
       this.updateFx(dt);
     } else if (!this.paused && this.screen !== "over") this.update(dt);
+    this.syncActionButton();
     this.draw();
     requestAnimationFrame(this.loop);
   }
@@ -2604,7 +2677,7 @@ export class Game {
     if (this.phase === "serve" && this.screen === "play" && this.serverPlayer() === this.near) {
       this.toastT = Math.max(this.toastT, 0.2);
       if (!$("toast").classList.contains("show")) {
-        const touch = this.touch || window.matchMedia("(pointer: coarse)").matches;
+        const touch = this.isTouchInput();
         this.toast(touch ? "Tap or hold SWING to serve underhand" : "Hold SPACE / click to serve underhand");
       }
     }
@@ -2690,7 +2763,7 @@ export class Game {
     ctx.fillText(label, this.w / 2, y + 18);
     ctx.fillStyle = "rgba(244,241,232,0.75)";
     ctx.font = "600 11px Outfit, sans-serif";
-    ctx.fillText("SPACE / click to skip", this.w / 2, y + 38);
+    ctx.fillText(this.isTouchInput() ? "TAP TO SKIP" : "SPACE / click to skip", this.w / 2, y + 38);
     ctx.restore();
   }
 
