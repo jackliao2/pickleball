@@ -267,6 +267,7 @@ canvas {
   align-items: center;
   justify-content: center;
   padding: 24px;
+  overflow-y: auto;
   background: linear-gradient(180deg, rgba(7, 24, 44, 0.35), rgba(7, 24, 44, 0.72));
   z-index: 5;
 }
@@ -685,6 +686,56 @@ body.menu-open #toolbar #btn-pause { display: none; }
 @media (min-width: 1800px) {
   #page { grid-template-columns: 300px minmax(0, 1fr) 300px; }
   .ad-slot { width: 300px; }
+
+  #menu .card,
+  #over .card,
+  #pause .card,
+  #scout .card { width: min(clamp(520px, 30vw, 680px), 100%); }
+  #menu .lede { font-size: 16px; }
+
+  .sb { min-width: 680px; border-radius: 17px; }
+  .sb-side { gap: 12px; padding: 10px 18px; }
+  .sb-name { font-size: 15px; }
+  .sb-pts { font-size: 44px; }
+  .sb-call { font-size: 25px; }
+  .sb-serve { font-size: 13px; }
+  .chip { font-size: 13px; padding: 5px 11px; }
+  .keys { transform: scale(1.2); transform-origin: top left; }
+  #toolbar { transform: scale(1.15); transform-origin: top right; }
+  #toast { font-size: 17px; padding: 10px 17px; }
+}
+
+@media (min-width: 2400px) and (min-height: 1200px) {
+  .sb { min-width: 760px; }
+  .sb-name { font-size: 17px; }
+  .sb-pts { font-size: 50px; }
+  .sb-call { font-size: 28px; }
+  .sb-serve { font-size: 14px; }
+  .chip { font-size: 14px; padding: 6px 13px; }
+  .keys { transform: scale(1.4); }
+  #toolbar { transform: scale(1.3); }
+  #toast { font-size: 19px; }
+
+  #over .card { padding: 38px 36px 30px; }
+  #over .kicker { font-size: 15px; }
+  #over h2 { font-size: 60px; margin-bottom: 16px; }
+  #over .lede { font-size: 24px; }
+  #over .hint { font-size: 16px; }
+  #over .btn { font-size: 17px; padding: 15px 18px; }
+}
+
+@media (max-height: 850px) and (min-width: 701px) {
+  .overlay { padding: 12px; }
+  #menu .card { padding: 18px 20px 14px; }
+  #menu h1 { font-size: 60px; margin-bottom: 6px; }
+  #menu .lede { line-height: 1.35; margin-bottom: 10px; }
+  #menu .diff { margin-bottom: 8px; }
+  #menu .venue-bar { margin: 4px 0 8px; }
+  #menu .venue-head { margin-bottom: 5px; }
+  #menu .venue-col { padding: 6px; }
+  #menu .btn { margin-top: 5px; padding: 9px 14px; }
+  #menu .hint { margin-top: 7px; }
+  #menu .menu-links { margin-top: 8px; }
 }
 
 @media (max-width: 1100px) {
@@ -703,6 +754,10 @@ body.menu-open #toolbar #btn-pause { display: none; }
 
 @media (max-width: 700px) {
   #hud { padding-top: 52px; }
+  #menu,
+  #roster,
+  #howto,
+  #challenge { align-items: flex-start; }
   .sb { min-width: auto; width: calc(100% - 24px); }
   .sb-pts { font-size: 26px; }
   .sb-name { font-size: 11px; }

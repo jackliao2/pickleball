@@ -815,6 +815,11 @@ export class Game {
     const ch = Math.floor(box.clientHeight || 0);
     this.w = cw > 120 ? cw : Math.max(800, Math.floor(window.innerWidth));
     this.h = ch > 120 ? ch : Math.max(480, Math.floor(window.innerHeight));
+    // The court projection expands with the canvas, while players and the ball
+    // are drawn in pixels. Scale those world objects too so a large desktop
+    // canvas does not make the action look miniature.
+    const referenceArea = 1056 * 857;
+    this.worldScale = clamp(Math.sqrt((this.w * this.h) / referenceArea), 1, 1.7);
     this.canvas.width = Math.floor(this.w * dpr);
     this.canvas.height = Math.floor(this.h * dpr);
     this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -844,11 +849,12 @@ export class Game {
     const d0 = this.view.d0;
     const t = this.courtT(y);
     const persp = this.view.near * (d0 / Math.max(8, d0 + y));
+    const worldScale = this.worldScale || 1;
     const shake = this.shake ? this.shake * (Math.random() - 0.5) : 0;
-    const sy = lerp(this.view.bot, this.view.top, t) - z * 13.2 * persp + shake;
+    const sy = lerp(this.view.bot, this.view.top, t) - z * 13.2 * persp * worldScale + shake;
     const half = this.w * 0.39 * persp;
     const sx = this.w / 2 + this.camX + ((x - 10) / 10) * half;
-    return { sx, sy, s: persp };
+    return { sx, sy, s: persp * worldScale };
   }
 
   unproject(sx, sy) {
