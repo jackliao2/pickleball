@@ -744,6 +744,12 @@ export class Game {
     const stick = $("stick");
     const knob = $("knob");
     const swing = $("btn-swing");
+    const centerKnob = () => {
+      if (!stick.offsetWidth || !knob.offsetWidth) return;
+      const rest = (stick.clientWidth - knob.offsetWidth) / 2;
+      knob.style.left = `${rest}px`;
+      knob.style.top = `${rest}px`;
+    };
     const set = (clientX, clientY) => {
       const r = stick.getBoundingClientRect();
       const cx = r.left + r.width / 2;
@@ -756,8 +762,9 @@ export class Game {
         dx = (dx / m) * max;
         dy = (dy / m) * max;
       }
-      knob.style.left = `${33 + dx}px`;
-      knob.style.top = `${33 + dy}px`;
+      const rest = (stick.clientWidth - knob.offsetWidth) / 2;
+      knob.style.left = `${rest + dx}px`;
+      knob.style.top = `${rest + dy}px`;
       this.stick.dx = dx / max;
       this.stick.dy = dy / max;
     };
@@ -773,20 +780,24 @@ export class Game {
       this.stick.active = false;
       this.stick.dx = 0;
       this.stick.dy = 0;
-      knob.style.left = "33px";
-      knob.style.top = "33px";
+      centerKnob();
     };
     stick.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
       stick.setPointerCapture(e.pointerId);
       on(e);
     });
     stick.addEventListener("pointermove", (e) => {
-      if (this.stick.active) set(e.clientX, e.clientY);
+      if (!this.stick.active) return;
+      e.preventDefault();
+      set(e.clientX, e.clientY);
     });
     stick.addEventListener("pointerup", off);
     stick.addEventListener("pointercancel", off);
+    stick.addEventListener("lostpointercapture", off);
     swing.addEventListener("pointerdown", (e) => {
       e.preventDefault();
+      swing.setPointerCapture(e.pointerId);
       this.touch = true;
       $("touch").hidden = false;
       $("keys-hint")?.classList.add("touch");
@@ -796,7 +807,10 @@ export class Game {
       }
       this.beginCharge(this.near);
     });
-    swing.addEventListener("pointerup", () => this.releaseSwing(this.near));
+    const finishSwing = () => this.releaseSwing(this.near);
+    swing.addEventListener("pointerup", finishSwing);
+    swing.addEventListener("pointercancel", finishSwing);
+    swing.addEventListener("lostpointercapture", finishSwing);
     window.addEventListener(
       "touchstart",
       () => {
@@ -829,6 +843,7 @@ export class Game {
       d0: 42,
       near: 1.08,
     };
+    if (this.match && $("serve-tag")) this.syncHud();
   }
 
   courtT(y) {
@@ -886,6 +901,7 @@ export class Game {
       this.applyLook(this.farB, tintLook(this.oppLook, 0.72));
     }
     document.body.classList.remove("menu-open");
+    document.body.classList.add("game-open");
     $("menu").hidden = true;
     $("roster").hidden = true;
     $("howto").hidden = true;
@@ -1233,6 +1249,7 @@ export class Game {
     this.challengeIndex = -1;
     this.diff = this.menuDiff || "normal";
     document.body.classList.add("menu-open");
+    document.body.classList.remove("game-open");
     $("menu").hidden = false;
     $("roster").hidden = true;
     $("pause").hidden = true;
@@ -2410,8 +2427,10 @@ export class Game {
           : this.isDoubles() && this.match.serverNum === 2
             ? "CPU 2"
             : "CPU";
-    const court = this.evenScore() ? "right / even" : "left / odd";
-    $("serve-tag").textContent = `${who} serving · ${court}`;
+    const even = this.evenScore();
+    const compact = window.matchMedia("(max-width: 700px), (max-height: 600px)").matches;
+    const court = even ? "right / even" : "left / odd";
+    $("serve-tag").textContent = compact ? `${who} · ${even ? "RIGHT" : "LEFT"}` : `${who} serving · ${court}`;
     $("chip-serve").classList.toggle("on", this.match.serveBounced);
     $("chip-return").classList.toggle("on", this.match.returnBounced);
     $("chip-rally").textContent = `Rally ${this.rallyLen}`;

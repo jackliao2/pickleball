@@ -16,6 +16,7 @@ html, body {
   color: var(--paper);
   font-family: Outfit, "Segoe UI", sans-serif;
   overflow: hidden;
+  overscroll-behavior: none;
   user-select: none;
   -webkit-user-select: none;
 }
@@ -71,6 +72,11 @@ html, body {
   overflow: hidden;
   background: #07182c;
   box-shadow: 0 18px 50px rgba(0, 0, 0, 0.35);
+}
+
+body.game-open #app {
+  touch-action: none;
+  overscroll-behavior: none;
 }
 
 .site-foot {
@@ -646,6 +652,8 @@ h3 { font-size: 15px; letter-spacing: 0.12em; text-transform: uppercase; margin:
 }
 #stick {
   pointer-events: auto;
+  touch-action: none;
+  -webkit-touch-callout: none;
   position: absolute;
   left: max(18px, env(safe-area-inset-left));
   bottom: max(18px, env(safe-area-inset-bottom));
@@ -663,9 +671,12 @@ h3 { font-size: 15px; letter-spacing: 0.12em; text-transform: uppercase; margin:
   background: rgba(212, 225, 87, 0.9);
   left: 33px;
   top: 33px;
+  pointer-events: none;
 }
 #btn-swing {
   pointer-events: auto;
+  touch-action: none;
+  -webkit-touch-callout: none;
   position: absolute;
   right: max(18px, env(safe-area-inset-right));
   bottom: max(18px, env(safe-area-inset-bottom));
@@ -682,6 +693,11 @@ h3 { font-size: 15px; letter-spacing: 0.12em; text-transform: uppercase; margin:
 
 body.menu-open #hud,
 body.menu-open #toolbar #btn-pause { display: none; }
+body.menu-open #touch { display: none; }
+
+@media (pointer: coarse) {
+  #btn-full { display: none; }
+}
 
 @media (min-width: 1800px) {
   #page { grid-template-columns: 300px minmax(0, 1fr) 300px; }
@@ -750,6 +766,31 @@ body.menu-open #toolbar #btn-pause { display: none; }
     box-shadow: none;
   }
   .site-foot { padding: 8px 12px 10px; }
+  body.game-open .site-foot { display: none; }
+}
+
+@media (max-height: 600px) {
+  .site-foot { display: none; }
+  #menu,
+  #roster,
+  #howto,
+  #challenge { align-items: flex-start; }
+  #hud { padding: 6px 10px 0; gap: 4px; }
+  .chips { gap: 4px; }
+  #stick {
+    left: max(12px, env(safe-area-inset-left));
+    bottom: max(12px, env(safe-area-inset-bottom));
+    width: 100px;
+    height: 100px;
+  }
+  #knob { width: 44px; height: 44px; left: 28px; top: 28px; }
+  #btn-swing {
+    right: max(12px, env(safe-area-inset-right));
+    bottom: max(12px, env(safe-area-inset-bottom));
+    width: 92px;
+    height: 92px;
+    font-size: 13px;
+  }
 }
 
 @media (max-width: 700px) {
@@ -767,4 +808,10 @@ body.menu-open #toolbar #btn-pause { display: none; }
   .card { padding: 22px 16px 16px; }
   h1 { font-size: 52px; }
   .keys { display: none; }
+}
+
+@media (max-width: 380px) {
+  #stick { width: 108px; height: 108px; }
+  #knob { width: 48px; height: 48px; left: 30px; top: 30px; }
+  #btn-swing { width: 96px; height: 96px; font-size: 13px; }
 }
