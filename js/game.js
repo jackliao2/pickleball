@@ -660,6 +660,7 @@ export class Game {
   bind() {
     const c = this.canvas;
     window.addEventListener("resize", () => this.resize());
+    if (window.ResizeObserver) new ResizeObserver(() => this.resize()).observe($("app"));
     window.addEventListener("keydown", (e) => {
       if (["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.code)) e.preventDefault();
       this.keys.add(e.code);
@@ -809,8 +810,9 @@ export class Game {
 
   resize() {
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    this.w = Math.max(960, Math.floor(window.innerWidth));
-    this.h = Math.max(540, Math.floor(window.innerHeight));
+    const box = $("app") || this.canvas;
+    this.w = Math.max(640, Math.floor(box.clientWidth || window.innerWidth));
+    this.h = Math.max(400, Math.floor(box.clientHeight || window.innerHeight));
     this.canvas.width = Math.floor(this.w * dpr);
     this.canvas.height = Math.floor(this.h * dpr);
     this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -1253,7 +1255,8 @@ export class Game {
   }
 
   toggleFull() {
-    if (!document.fullscreenElement) document.documentElement.requestFullscreen?.();
+    const el = $("app") || document.documentElement;
+    if (!document.fullscreenElement) el.requestFullscreen?.();
     else document.exitFullscreen?.();
   }
 

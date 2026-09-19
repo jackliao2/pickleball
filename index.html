@@ -34,7 +34,11 @@
   </script>
 </head>
 <body>
-  <div id="app">
+  <div id="page">
+    <aside class="ad-rail" aria-label="Advertisement">
+      <div class="ad-slot"><span>Ad</span></div>
+    </aside>
+    <div id="app">
     <canvas id="c"></canvas>
 
     <header id="hud" hidden>
@@ -235,6 +239,10 @@
       <button type="button" id="btn-mute" title="Sound">♪</button>
       <button type="button" id="btn-full" title="Fullscreen">Fullscreen</button>
     </div>
+    </div>
+    <aside class="ad-rail" aria-label="Advertisement">
+      <div class="ad-slot"><span>Ad</span></div>
+    </aside>
   </div>
   <script type="module" src="/js/game.js"></script>
 </body>
