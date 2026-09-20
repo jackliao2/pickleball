@@ -139,7 +139,7 @@ try {
     await page.waitForFunction(() => document.querySelector("#btn-swing").textContent === "SERVE");
     await page.waitForFunction(() => document.querySelector("#toast").textContent.includes("SWING"));
     const styles = await page.evaluate(() => ({
-      stick: getComputedStyle(document.querySelector("#stick")).touchAction,
+      stick: getComputedStyle(document.querySelector("#stick-zone")).touchAction,
       swing: getComputedStyle(document.querySelector("#btn-swing")).touchAction,
       overscroll: getComputedStyle(document.body).overscrollBehavior,
     }));

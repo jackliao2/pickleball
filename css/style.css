@@ -684,44 +684,51 @@ body:has(#roster:not([hidden]), #challenge:not([hidden]), #scout:not([hidden])) 
   opacity: 0.75;
 }
 .venue-head .btn { width: auto; margin: 0; padding: 4px 10px; font-size: 11px; }
-.venue-split {
+.venue-rows { display: grid; gap: 6px; }
+.venue-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 62px 1fr;
+  align-items: center;
   gap: 8px;
 }
-.venue-col {
-  background: rgba(255,255,255,0.04);
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 8px;
-}
-.venue-col p {
-  margin: 0 0 6px;
+.venue-row > span {
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  text-align: center;
   opacity: 0.5;
 }
-.venue-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 5px;
-}
+.venue-grid { display: flex; gap: 5px; }
 .venue-grid button {
+  position: relative;
+  overflow: hidden;
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 110px; /* wide cards (roster): keep chips compact, left-aligned */
   font: 650 11px Outfit, sans-serif;
   color: var(--paper);
   background: rgba(255,255,255,0.06);
   border: 1px solid var(--line);
   border-radius: 8px;
-  padding: 6px 4px;
+  padding: 7px 4px 9px;
   cursor: pointer;
   text-align: center;
-  width: 100%;
+  white-space: nowrap;
 }
+/* Sky-to-court stripe: each chip previews its venue's palette. */
+.venue-grid button::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--sky), var(--court));
+  opacity: 0.85;
+}
+.venue-grid button:hover { background: rgba(255,255,255,0.1); }
 .venue-grid button.on { background: var(--yellow); color: var(--ink); border-color: var(--yellow); }
-.venue-grid button:last-child:nth-child(odd) { grid-column: 1 / -1; }
+.venue-grid button.on::after { opacity: 1; }
 .roster-top .kicker { margin-bottom: 4px; }
 @media (max-width: 700px) {
   /* Phone roster: kits side by side, Start always on screen; stats + venue fold away. */
@@ -986,7 +993,7 @@ body.menu-open #touch { display: none; }
   #menu .diff { margin-bottom: 8px; }
   #menu .venue-bar { margin: 4px 0 8px; }
   #menu .venue-head { margin-bottom: 5px; }
-  #menu .venue-col { padding: 6px; }
+  #menu .venue-rows { gap: 4px; }
   #menu .btn { margin-top: 5px; padding: 9px 14px; }
   #menu .hint { margin-top: 7px; }
   #menu .menu-links { margin-top: 8px; }
