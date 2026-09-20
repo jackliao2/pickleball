@@ -795,9 +795,16 @@ h3 { font-size: 15px; letter-spacing: 0.12em; text-transform: uppercase; margin:
 .menu-links a:hover { color: var(--yellow); }
 #menu { flex-direction: column; justify-content: flex-start; }
 #menu .card { margin-top: auto; }
-.seo-blurb { width: min(440px, 100%); margin: 14px 0 auto; padding: 14px 6px 0; border-top: 1px solid var(--line); color: rgba(244,241,232,0.7); font-size: 13px; line-height: 1.5; }
+.seo-blurb { width: min(440px, 100%); margin: 14px 0 auto; padding: 18px 22px 16px; background: rgba(12, 39, 68, 0.86); border: 1px solid var(--line); border-radius: 20px; color: rgba(244,241,232,0.78); font-size: 13px; line-height: 1.5; }
 .seo-blurb h2 { font-size: 15px; line-height: 1.25; margin: 0 0 6px; letter-spacing: 0; }
 .seo-blurb p { margin: 0 0 8px; }
+.seo-blurb h3 { font-size: 14px; line-height: 1.25; margin: 14px 0 6px; letter-spacing: 0; color: rgba(244,241,232,0.9); }
+.seo-blurb ul { margin: 0 0 8px; padding-left: 18px; }
+.seo-blurb li { margin: 0 0 6px; }
+.seo-blurb strong { color: rgba(244,241,232,0.9); }
+.faq { margin: 0 0 10px; }
+.faq dt { font-weight: 600; color: rgba(244,241,232,0.9); margin: 8px 0 2px; }
+.faq dd { margin: 0; }
 .seo-blurb a { color: var(--paper); text-decoration: underline; }
 .seo-blurb a:hover { color: var(--yellow); }
 
