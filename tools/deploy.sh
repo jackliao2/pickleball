@@ -10,7 +10,7 @@ KEY=~/.ssh/mma_sim_key
 HOST=root@45.77.87.102
 DEST=/var/www/vspickleball.com/public_html
 INDEXNOW_KEY=02d3404e974f4b929fdd0e619fca831e
-FILES=(index.html about.html how-to-play.html privacy.html css js favicon.svg favicon.ico favicon-16.png favicon-32.png apple-touch-icon.png icon-192.png icon-512.png icon-512-maskable.png manifest.webmanifest og.jpg robots.txt sitemap.xml "$INDEXNOW_KEY.txt")
+FILES=(index.html about.html how-to-play.html privacy.html contact.html guides ads.txt css js favicon.svg favicon.ico favicon-16.png favicon-32.png apple-touch-icon.png icon-192.png icon-512.png icon-512-maskable.png manifest.webmanifest og.jpg robots.txt sitemap.xml "$INDEXNOW_KEY.txt")
 
 scp -i "$KEY" -o BatchMode=yes -r "${FILES[@]}" "$HOST:$DEST/"
 ssh -i "$KEY" -o BatchMode=yes "$HOST" "chown -R root:www-data $DEST && find $DEST -type d -exec chmod 755 {} \; && find $DEST -type f -exec chmod 644 {} \;"
