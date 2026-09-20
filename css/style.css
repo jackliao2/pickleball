@@ -821,15 +821,6 @@ h3 { font-size: 15px; letter-spacing: 0.12em; text-transform: uppercase; margin:
 .btn.ghost { background: transparent; }
 .btn:hover { filter: brightness(1.08); }
 
-.menu-links {
-  margin: 14px 0 0;
-  font-size: 13px;
-  font-weight: 600;
-  text-align: center;
-  opacity: 0.8;
-}
-.menu-links a { color: var(--paper); text-decoration: none; }
-.menu-links a:hover { color: var(--yellow); }
 #menu { flex-direction: column; justify-content: flex-start; }
 #menu .card { margin-top: auto; }
 .seo-blurb { width: min(440px, 100%); margin: 14px 0 auto; padding: 18px 22px 16px; background: rgba(12, 39, 68, 0.86); border: 1px solid var(--line); border-radius: 20px; color: rgba(244,241,232,0.78); font-size: 13px; line-height: 1.5; }
@@ -939,9 +930,12 @@ body.menu-open #hud,
 body.menu-open #toolbar #btn-pause { display: none; }
 body.menu-open #touch { display: none; }
 
+.touch-only { display: none; }
 @media (pointer: coarse) {
   #btn-full { display: none; }
   #btn-p2 { display: none; }
+  .kb-only { display: none; }
+  .touch-only { display: inline; }
 }
 
 @media (min-width: 1800px) {
@@ -996,7 +990,6 @@ body.menu-open #touch { display: none; }
   #menu .venue-rows { gap: 4px; }
   #menu .btn { margin-top: 5px; padding: 9px 14px; }
   #menu .hint { margin-top: 7px; }
-  #menu .menu-links { margin-top: 8px; }
 }
 
 @media (max-width: 1100px) {
@@ -1061,6 +1054,14 @@ body.menu-open #touch { display: none; }
   .card { padding: 22px 16px 16px; }
   h1 { font-size: 52px; }
   .keys { display: none; }
+  /* Phone menu: keep the primary Start button inside the first screen. */
+  #menu .kicker { font-size: 10.5px; letter-spacing: 0.08em; margin-bottom: 6px; white-space: nowrap; }
+  #menu .kicker-more { display: none; }
+  #menu h1 { margin-bottom: 8px; }
+  #menu .lede { font-size: 15px; line-height: 1.4; margin-bottom: 12px; }
+  #menu .diff { margin-bottom: 10px; }
+  #menu .venue-bar { margin: 4px 0 10px; }
+  #menu .hint { font-size: 12px; margin-top: 8px; }
 }
 
 @media (max-width: 380px) {
