@@ -19,7 +19,7 @@
   <link rel="icon" href="/favicon.ico" sizes="32x32" />
   <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
   <link rel="manifest" href="/manifest.webmanifest" />
-  <link rel="stylesheet" href="/css/style.css?v=202609202200" />
+  <link rel="stylesheet" href="/css/style.css?v=202609202300" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -285,7 +285,8 @@
     </div>
 
     <div id="scout" class="overlay" hidden>
-      <div class="card">
+      <div class="card scout-card">
+        <div class="roster-body">
         <p class="kicker" id="scout-kicker">Quarterfinal</p>
         <h2 id="scout-title">Jordan Blake</h2>
         <p class="lede" id="scout-vs">YOU vs Jordan Blake</p>
@@ -299,8 +300,11 @@
         <p class="scout-record" id="scout-record"></p>
         <p class="scout-boosts" id="scout-boosts" hidden></p>
         <div id="scout-stats" class="scout-stats"></div>
-        <button type="button" class="btn primary" id="btn-scout-play">Play match</button>
-        <button type="button" class="btn ghost" id="btn-scout-back">Back to map</button>
+        </div>
+        <div class="roster-actions">
+          <button type="button" class="btn primary" id="btn-scout-play">Play match</button>
+          <button type="button" class="btn ghost" id="btn-scout-back">Back to map</button>
+        </div>
       </div>
     </div>
 
