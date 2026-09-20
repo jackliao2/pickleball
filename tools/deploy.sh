@@ -15,7 +15,8 @@ FILES=(index.html about.html how-to-play.html privacy.html contact.html guides c
 # Cloudflare caches css/js for 4h; bump the ?v= stamp on every deploy so the
 # HTML never pairs with a stale stylesheet or game.js.
 STAMP=$(date +%Y%m%d%H%M)
-find . -path ./node_modules -prune -o -name '*.html' -print0   | xargs -0 sed -i -E "s#(/css/style\.css|/css/site\.css|/js/game\.js)\?v=[0-9]+#?v=$STAMP#g"
+find . -path ./node_modules -prune -o -name '*.html' -print0 \
+  | xargs -0 sed -i -E 's#(/css/style\.css|/css/site\.css|/js/game\.js)\?v=[0-9]+#\1?v='"$STAMP"'#g'
 echo "assets: v=$STAMP"
 
 scp -i "$KEY" -o BatchMode=yes -r "${FILES[@]}" "$HOST:$DEST/"
