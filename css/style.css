@@ -432,7 +432,7 @@ body:has(#roster:not([hidden]), #challenge:not([hidden]), #scout:not([hidden])) 
 }
 .side { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 .tune { display: flex; flex-direction: column; gap: 8px; }
-.tune-toggle { display: none; }
+.btn.tune-toggle { display: none; } /* phone-only, see the 700px block */
 .kit {
   display: flex;
   flex-direction: column;
@@ -688,18 +688,6 @@ body:has(#roster:not([hidden]), #challenge:not([hidden]), #scout:not([hidden])) 
 }
 .venue-grid button:hover { background: rgba(255,255,255,0.09); color: var(--paper); }
 .venue-grid button.on { background: var(--yellow); color: var(--ink); border-color: var(--yellow); }
-/* Random venue: same chip, full row, dashed so it reads as an action not a place. */
-.venue-grid .venue-random {
-  grid-column: 1 / -1;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  border-style: dashed;
-  color: rgba(244, 241, 232, 0.72);
-}
-.venue-grid .venue-random svg { width: 13px; height: 13px; flex-shrink: 0; }
-.venue-grid .venue-random:hover { border-style: solid; }
 @media (min-width: 701px) {
   /* Wide roster card: all eight venues on one row. */
   #roster-venue .venue-grid { grid-template-columns: repeat(8, 1fr); }
@@ -722,7 +710,7 @@ body:has(#roster:not([hidden]), #challenge:not([hidden]), #scout:not([hidden])) 
   #roster .venue-bar, .tune { display: none; }
   .roster-card.tuning #roster-venue { display: block; order: 2; margin-bottom: 8px; }
   .roster-card.tuning .tune { display: flex; }
-  .tune-toggle { display: block; margin: 0 0 8px; order: 3; }
+  .btn.tune-toggle { display: block; margin: 0 0 8px; order: 3; }
   .roster-actions { padding: 10px 14px calc(10px + env(safe-area-inset-bottom)); grid-template-columns: 1fr auto; }
   .challenge-card .roster-body, .scout-card .roster-body { padding: 16px 14px 4px; }
   .scout-card .scout-stats { margin-bottom: 8px; }

@@ -350,6 +350,8 @@ try {
 
   {
     const { context, page, errors } = await newPage({ viewport: { width: 1280, height: 800 } });
+    // The venue is random per visit; pin it so the restore check below is deterministic.
+    await page.evaluate(() => window.game.setVenue("park"));
     await page.click("#btn-challenge");
     await page.click("#tourney-map .map-node");
     const scout = await page.evaluate(() => ({

@@ -195,11 +195,6 @@ const TOURNAMENT = [
 ];
 const TOURNEY_KEY = "pb-tourney-v1";
 const TOURNEY_RECORD_KEY = "pb-tourney-record-v1";
-const VENUE_KEY = "pb-venue-v1";
-const DICE_SVG =
-  '<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="1.5" y="1.5" width="13" height="13" rx="3" fill="none" stroke="currentColor" stroke-width="1.5"/>' +
-  '<circle cx="5" cy="5" r="1.3" fill="currentColor"/><circle cx="11" cy="5" r="1.3" fill="currentColor"/><circle cx="8" cy="8" r="1.3" fill="currentColor"/>' +
-  '<circle cx="5" cy="11" r="1.3" fill="currentColor"/><circle cx="11" cy="11" r="1.3" fill="currentColor"/></svg>';
 const VENUES = [
   { id: "park", name: "Park", kind: "out", sky: ["#7ec8e8", "#c7e7f5", "#e7f3ea"], sun: "#f7e3a1", clouds: true, ground: ["#4f8a46", "#2f5c32"], apron: "#8aa7b8", runoff: "#cfc6b4", court: ["#1a6fb4", "#2b8ad0"], kitchen: "rgba(10,50,90,0.22)", line: "#f7f4ea" },
   { id: "dusk", name: "Dusk", kind: "out", sky: ["#1e2a58", "#e07a3d", "#f6c27a"], sun: "#ffb14a", ground: ["#3a5636", "#22301e"], apron: "#6a7684", runoff: "#b7a78c", court: ["#184e88", "#246ab0"], kitchen: "rgba(8,28,70,0.3)", line: "#f4efe0" },
@@ -601,28 +596,14 @@ export class Game {
     }
   }
 
+  // A fresh random venue every visit; the picker still lets you change it for this session.
   loadVenue() {
-    try {
-      const id = localStorage.getItem(VENUE_KEY);
-      return VENUES.find((v) => v.id === id) || VENUES[0];
-    } catch {
-      return VENUES[0];
-    }
+    return VENUES[(Math.random() * VENUES.length) | 0];
   }
 
   setVenue(id) {
     this.venue = VENUES.find((v) => v.id === id) || VENUES[0];
-    try {
-      localStorage.setItem(VENUE_KEY, this.venue.id);
-    } catch {
-      /* ignore */
-    }
     this.renderVenuePicks();
-  }
-
-  randomVenue() {
-    const pick = VENUES[(Math.random() * VENUES.length) | 0];
-    this.setVenue(pick.id);
   }
 
   renderVenuePicks() {
@@ -636,12 +617,6 @@ export class Game {
         b.onclick = () => this.setVenue(v.id);
         grid.appendChild(b);
       });
-      const r = document.createElement("button");
-      r.type = "button";
-      r.className = "venue-random";
-      r.innerHTML = DICE_SVG + "Random venue";
-      r.onclick = () => this.randomVenue();
-      grid.appendChild(r);
     });
   }
 
@@ -798,6 +773,9 @@ export class Game {
       this.pointer.on = true;
     });
     c.addEventListener("pointerdown", (e) => {
+      // pointerdown fires before touchstart, so a first-ever tap on the court would
+      // start a mouse-style charge that the touch path never releases.
+      if (e.pointerType === "touch") this.touch = true;
       if (this.touch) return;
       if (this.screen !== "play") return;
       this.sfx.ensure();
@@ -831,7 +809,7 @@ export class Game {
       const card = $("btn-tune").closest(".roster-card");
       const on = card.classList.toggle("tuning");
       $("btn-tune").setAttribute("aria-expanded", String(on));
-      $("btn-tune").textContent = on ? "Hide stats & venue" : "Tune stats & venue";
+      $("btn-tune").textContent = on ? "Hide" : "Adjust stats";
     };
     this.renderVenuePicks();
     $("btn-roster-back").onclick = () => this.closeRoster();
