@@ -792,6 +792,11 @@ h3 { font-size: 15px; letter-spacing: 0.12em; text-transform: uppercase; margin:
 }
 .menu-links a { color: var(--paper); text-decoration: none; }
 .menu-links a:hover { color: var(--yellow); }
+.seo-blurb { margin: 18px 0 0; padding-top: 14px; border-top: 1px solid var(--line); color: rgba(244,241,232,0.7); font-size: 13px; line-height: 1.5; }
+.seo-blurb h2 { font-size: 15px; line-height: 1.25; margin: 0 0 6px; letter-spacing: 0; }
+.seo-blurb p { margin: 0 0 8px; }
+.seo-blurb a { color: var(--paper); text-decoration: underline; }
+.seo-blurb a:hover { color: var(--yellow); }
 
 .rules { padding-left: 18px; display: flex; flex-direction: column; gap: 10px; }
 .rules li { line-height: 1.45; color: rgba(244,241,232,0.86); font-size: 14px; }
