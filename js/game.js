@@ -2975,6 +2975,7 @@ export class Game {
     this.drawSky(ctx);
     this.drawGround(ctx);
     this.drawCourt(ctx);
+    this.drawBranding(ctx);
     if (this.highlightBox) this.drawServeTarget(ctx);
     if (this.ball.live) this.drawLanding(ctx);
     this.drawShadow(ctx);
@@ -3002,6 +3003,59 @@ export class Game {
     if (this.near.charging && this.screen === "play") this.drawCharge(ctx, this.near);
     if (this.far.charging && this.mode === "p2" && this.screen === "play") this.drawCharge(ctx, this.far);
     if (this.phase === "replay") this.drawReplayMark(ctx);
+    this.drawWatermark(ctx);
+  }
+
+  /** Wordmark painted on the far half and the URL on the near half, like court sponsor paint. */
+  drawBranding(ctx) {
+    const v = this.venue || VENUES[0];
+    const strip = (yc, text, wordmark) => {
+      const c = this.project(10, yc, 0);
+      const l = this.project(0, yc, 0);
+      const r = this.project(20, yc, 0);
+      const a = this.project(10, yc - 1, 0);
+      const b = this.project(10, yc + 1, 0);
+      const xs = (r.sx - l.sx) / 20;
+      const ys = (a.sy - b.sy) / 2;
+      if (xs < 4 || ys < 1.2) return;
+      ctx.save();
+      ctx.translate(c.sx, c.sy);
+      ctx.scale(xs / 20, ys / 20);
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.font = "800 64px 'Barlow Condensed', Impact, sans-serif";
+      ctx.globalAlpha = 0.34;
+      if (wordmark) {
+        const vsW = ctx.measureText("VS ").width;
+        const pbW = ctx.measureText("PICKLEBALL").width;
+        const x0 = -(vsW + pbW) / 2;
+        ctx.textAlign = "left";
+        ctx.fillStyle = "#d4e157";
+        ctx.fillText("VS ", x0, 0);
+        ctx.fillStyle = v.line;
+        ctx.fillText("PICKLEBALL", x0 + vsW, 0);
+      } else {
+        ctx.font = "800 28px 'Barlow Condensed', Impact, sans-serif";
+        ctx.fillStyle = v.line;
+        ctx.globalAlpha = 0.26;
+        ctx.fillText(text, 0, 0);
+      }
+      ctx.restore();
+    };
+    strip(37.4, "", true);
+    strip(3.6, "VSPICKLEBALL.COM", false);
+  }
+
+  drawWatermark(ctx) {
+    if (this.screen !== "play") return;
+    ctx.save();
+    ctx.globalAlpha = 0.42;
+    ctx.fillStyle = "#f4f1e8";
+    ctx.font = "600 11px Outfit, sans-serif";
+    ctx.textAlign = "right";
+    ctx.textBaseline = "alphabetic";
+    ctx.fillText("vspickleball.com", this.w - 12, this.h - 10);
+    ctx.restore();
   }
 
   shouldShowAim(p) {

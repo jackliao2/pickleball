@@ -150,3 +150,15 @@ body.docs {
 @media (max-width: 1100px) {
   .site-foot { padding: 10px 12px 14px; }
 }
+
+.docs-nav .brand {
+  font-family: "Barlow Condensed", Impact, sans-serif;
+  font-weight: 800;
+  font-size: 26px;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  opacity: 1;
+  margin-right: auto;
+}
+.docs-nav .brand:hover { color: var(--paper); }
+.wordmark .vs { display: inline-block; color: var(--yellow); transform: skewX(-9deg); margin-right: 0.04em; }

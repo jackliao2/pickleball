@@ -735,6 +735,7 @@ h1, h2 {
 }
 h1 { font-size: clamp(52px, 10vw, 76px); margin-bottom: 10px; }
 h2 { font-size: 42px; margin-bottom: 12px; }
+.wordmark .vs { display: inline-block; color: var(--yellow); transform: skewX(-9deg); margin-right: 0.04em; }
 h3 { font-size: 15px; letter-spacing: 0.12em; text-transform: uppercase; margin: 18px 0 8px; }
 .lede { color: rgba(244,241,232,0.82); line-height: 1.45; margin-bottom: 18px; }
 .hint { font-size: 13px; line-height: 1.5; color: rgba(244,241,232,0.62); margin-top: 12px; }
