@@ -12,6 +12,12 @@ DEST=/var/www/vspickleball.com/public_html
 INDEXNOW_KEY=02d3404e974f4b929fdd0e619fca831e
 FILES=(index.html about.html how-to-play.html privacy.html contact.html guides css js favicon.svg favicon.ico favicon-16.png favicon-32.png apple-touch-icon.png icon-192.png icon-512.png icon-512-maskable.png manifest.webmanifest og.jpg robots.txt sitemap.xml "$INDEXNOW_KEY.txt")
 
+# Cloudflare caches css/js for 4h; bump the ?v= stamp on every deploy so the
+# HTML never pairs with a stale stylesheet or game.js.
+STAMP=$(date +%Y%m%d%H%M)
+find . -path ./node_modules -prune -o -name '*.html' -print0   | xargs -0 sed -i -E "s#(/css/style\.css|/css/site\.css|/js/game\.js)\?v=[0-9]+#?v=$STAMP#g"
+echo "assets: v=$STAMP"
+
 scp -i "$KEY" -o BatchMode=yes -r "${FILES[@]}" "$HOST:$DEST/"
 ssh -i "$KEY" -o BatchMode=yes "$HOST" "chown -R root:www-data $DEST && find $DEST -type d -exec chmod 755 {} \; && find $DEST -type f -exec chmod 644 {} \;"
 echo "uploaded: $(curl -s -o /dev/null -w '%{http_code}' https://vspickleball.com/)"
