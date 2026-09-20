@@ -157,3 +157,17 @@ body.docs {
 }
 .docs-nav .brand:hover { color: var(--paper); }
 .wordmark .vs { display: inline-block; color: var(--yellow); transform: skewX(-9deg); margin-right: 0.04em; }
+
+/* Guides */
+.docs-shell table { width: 100%; border-collapse: collapse; margin: 0 0 18px; font-size: 15px; }
+.docs-shell th, .docs-shell td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.docs-shell th { font-weight: 700; color: rgba(244,241,232,0.92); }
+.docs-shell td:first-child { font-weight: 600; white-space: nowrap; }
+.guide-list { list-style: none; padding: 0; margin: 0 0 18px; }
+.guide-list li { border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; margin: 0 0 10px; background: rgba(255,255,255,0.03); }
+.guide-list li a { font-weight: 700; text-decoration: none; }
+.guide-list li span { display: block; margin-top: 4px; opacity: 0.8; font-size: 14px; }
+.docs-shell dl.faq { margin: 0 0 18px; }
+.guide-next { margin-top: 36px; }
+.guide-next p { margin: 0 0 6px; }
+@media (max-width: 480px) { .docs-shell td:first-child { white-space: normal; } }
