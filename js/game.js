@@ -22,6 +22,9 @@ const STAT_LIST = [
   ["reach", "Reach", "How far the paddle covers"],
 ];
 const STAT_IDS = STAT_LIST.map((s) => s[0]);
+const STAT_UPGRADES = Object.fromEntries(
+  STAT_LIST.map(([id, label, desc]) => [id, { label, desc }])
+);
 const STAT_BUDGET = 36;
 const PRESETS = {
   balanced: { name: "All-court", speed: 6, power: 6, angle: 6, serve: 6, hands: 6, reach: 6 },
@@ -80,6 +83,16 @@ const TOURNAMENT = [
     name: "Pat Nguyen",
     style: "Club rec",
     blurb: "Soft dinks, slow feet, almost never attacks. A warm-up.",
+    venue: "park",
+    points: 7,
+    objective: { type: "margin", value: 3, label: "Win by at least 3 points" },
+    tactic: {
+      id: "soft-starter",
+      label: "Soft starter",
+      tell: "Extends rallies with soft drops and rarely attacks first.",
+      counter: "Keep the ball deep, then take the first short return.",
+      kitchen: 0.58, attack: 0.08, drive: 0.18, lob: 0.02, target: "open",
+    },
     diff: "easy",
     stats: { speed: 3, power: 2, angle: 5, serve: 3, hands: 4, reach: 4 },
     look: { skin: "#c99272", shirt: "#f4f1e8", shorts: "#6b3f1f", visor: "#f4f1e8", paddle: "#e07a3d", hair: "#1a1a1a", shoes: "#efe6d8", hat: "visor", hairStyle: "fade" },
@@ -89,6 +102,16 @@ const TOURNAMENT = [
     name: "Sam Ortiz",
     style: "All-court",
     blurb: "Gets the ball back. Little pace. Keep it deep and you are fine.",
+    venue: "gym",
+    points: 7,
+    objective: { type: "longest", value: 8, label: "Play a rally of 8 shots" },
+    tactic: {
+      id: "retriever",
+      label: "Retriever",
+      tell: "Tracks down open-court balls and waits for you to miss.",
+      counter: "Move Sam twice—wide first, then behind the recovery step.",
+      kitchen: 0.52, attack: 0.14, drive: 0.32, lob: 0.04, target: "open",
+    },
     diff: "easy",
     stats: { speed: 4, power: 3, angle: 5, serve: 4, hands: 4, reach: 4 },
     look: { skin: "#e2b08c", shirt: "#3d7ea6", shorts: "#222222", visor: "#1a1a1a", paddle: "#3d7ea6", hair: "#3b2a1a", shoes: "#222222", hat: "cap", hairStyle: "short" },
@@ -98,6 +121,16 @@ const TOURNAMENT = [
     name: "Jordan Blake",
     style: "Athlete",
     blurb: "Runs the court, still learning the kitchen. Medium pace, not a banger.",
+    venue: "beach",
+    points: 7,
+    objective: { type: "aces", value: 1, label: "Score at least 1 ace" },
+    tactic: {
+      id: "runner",
+      label: "Runner",
+      tell: "Covers the sidelines and mixes drives with surprise lobs.",
+      counter: "Bring Jordan forward with drops instead of racing side to side.",
+      kitchen: 0.62, attack: 0.24, drive: 0.52, lob: 0.14, target: "open",
+    },
     diff: "easy",
     stats: { speed: 5, power: 4, angle: 5, serve: 4, hands: 5, reach: 5 },
     look: { skin: "#a56b45", shirt: "#d4e157", shorts: "#222222", visor: "#d4e157", paddle: "#222222", hair: "#1a1a1a", shoes: "#e45a43", hat: "band", hairStyle: "fade" },
@@ -107,6 +140,16 @@ const TOURNAMENT = [
     name: "Alex Kim",
     style: "Kitchen",
     blurb: "Lives at the NVZ. Soft hands, blocks, then speed-ups when you pop it up.",
+    venue: "club",
+    points: 9,
+    objective: { type: "longest", value: 12, label: "Survive a 12-shot kitchen battle" },
+    tactic: {
+      id: "kitchen-specialist",
+      label: "Kitchen specialist",
+      tell: "Rushes the kitchen, dinks patiently, then attacks a high ball.",
+      counter: "Use deep returns and lobs before Alex settles at the line.",
+      kitchen: 0.98, attack: 0.46, drive: 0.22, lob: 0.06, target: "open",
+    },
     diff: "normal",
     stats: { speed: 5, power: 4, angle: 7, serve: 4, hands: 7, reach: 5 },
     look: { skin: "#f3d1b0", shirt: "#c43c6a", shorts: "#eeeeee", visor: "#c43c6a", paddle: "#f4f1e8", hair: "#1a1a1a", shoes: "#f4f1e8", hat: "visor", hairStyle: "bun" },
@@ -116,6 +159,16 @@ const TOURNAMENT = [
     name: "Morgan Hale",
     style: "Banger",
     blurb: "Big drives and body speed-ups. Weak on touch. Reset to the kitchen.",
+    venue: "night",
+    points: 9,
+    objective: { type: "attackWins", value: 2, label: "Win 2 rallies with speed-ups or smashes" },
+    tactic: {
+      id: "banger",
+      label: "Banger",
+      tell: "Drives hard from the baseline and speeds up at your body.",
+      counter: "Absorb the pace with soft resets; make Morgan dink.",
+      kitchen: 0.7, attack: 0.9, drive: 0.92, lob: 0.02, target: "body",
+    },
     diff: "hard",
     stats: { speed: 7, power: 8, angle: 4, serve: 6, hands: 4, reach: 5 },
     look: { skin: "#7a4a2e", shirt: "#222222", shorts: "#e45a43", visor: "#1a1a1a", paddle: "#e45a43", hair: "#1a1a1a", shoes: "#e45a43", hat: "none", hairStyle: "bald" },
@@ -125,12 +178,23 @@ const TOURNAMENT = [
     name: "Casey Voss",
     style: "Pro",
     blurb: "Deep serves, heavy pace, fast hands. Championship form.",
+    venue: "arena",
+    points: 11,
+    objective: { type: "margin", value: 3, label: "Win the championship by 3" },
+    tactic: {
+      id: "complete-pro",
+      label: "Complete pro",
+      tell: "Changes pace, owns the kitchen, and punishes predictable positioning.",
+      counter: "Vary depth and tempo—repeating the same ball gets exposed.",
+      kitchen: 0.9, attack: 0.68, drive: 0.7, lob: 0.12, target: "adaptive",
+    },
     diff: "hard",
     stats: { speed: 8, power: 8, angle: 6, serve: 8, hands: 7, reach: 6 },
     look: { skin: "#4d2e1c", shirt: "#f4f1e8", shorts: "#16385c", visor: "#1a1a1a", paddle: "#d4e157", hair: "#1a1a1a", shoes: "#f4f1e8", hat: "cap", hairStyle: "pony" },
   },
 ];
 const TOURNEY_KEY = "pb-tourney-v1";
+const TOURNEY_RECORD_KEY = "pb-tourney-record-v1";
 const VENUE_KEY = "pb-venue-v1";
 const VENUES = [
   { id: "park", name: "Park", kind: "out", sky: ["#7ec8e8", "#c7e7f5", "#e7f3ea"], sun: "#f7e3a1", clouds: true, ground: ["#4f8a46", "#2f5c32"], apron: "#8aa7b8", runoff: "#cfc6b4", court: ["#1a6fb4", "#2b8ad0"], kitchen: "rgba(10,50,90,0.22)", line: "#f7f4ea" },
@@ -419,6 +483,9 @@ export class Game {
     this.pendingHit = null;
     this.replay = null;
     this.challengeIndex = -1;
+    this.challengeRunActive = false;
+    this.challengeBoosts = Object.fromEntries(STAT_IDS.map((id) => [id, 0]));
+    this.challengeOriginalVenue = null;
     this.tutorial = { active: false, step: 0 };
 
     this.bind();
@@ -663,7 +730,7 @@ export class Game {
   }
 
   emptyMeta() {
-    return { longest: 0, aces: 0, winners: 0, speedups: 0, kitchen: 0 };
+    return { longest: 0, aces: 0, winners: 0, speedups: 0, attackWins: 0, kitchen: 0 };
   }
 
   bind() {
@@ -901,7 +968,7 @@ export class Game {
     this.paused = false;
     this.replay = null;
     this.tape = [];
-    this.applyBuild(this.near, this.youBuild);
+    this.applyBuild(this.near, mode === "challenge" ? this.challengeBuild() : this.youBuild);
     this.applyBuild(this.far, this.oppBuild);
     this.applyLook(this.near, this.youLook);
     this.applyLook(this.far, this.oppLook);
@@ -920,7 +987,13 @@ export class Game {
     $("scout").hidden = true;
     $("pause").hidden = true;
     $("over").hidden = true;
-    $("hud").hidden = false;
+    $("tourney-upgrade").hidden = true;
+    $("btn-rematch").hidden = false;
+    const hud = $("hud");
+    hud.hidden = false;
+    hud.classList.toggle("p2-layout", mode === "p2");
+    $("keys-p2").hidden = mode !== "p2";
+    $("keys-label").textContent = mode === "p2" ? "player 1 · tap dink · hold speed-up" : "tap dink · hold speed-up";
     $("name-near").textContent = mode === "doubles" ? "YOU" : this.youBuild.name || "YOU";
     $("name-far").textContent =
       mode === "p2" ? this.oppBuild.name || "P2" : mode === "doubles" ? "THEM" : this.oppBuild.name || "CPU";
@@ -1135,7 +1208,10 @@ export class Game {
   }
 
   cpuLand(p, b, kind, opp) {
-    const open = opp.x < 10 ? rand(11.5, 17.4) : rand(2.6, 8.5);
+    const tactic = this.aiTactic(p);
+    const target = tactic?.target || "open";
+    const useBody = target === "body" || (target === "adaptive" && this.rallyLen % 3 === 0);
+    const open = useBody ? opp.x + rand(-0.65, 0.65) : opp.x < 10 ? rand(11.5, 17.4) : rand(2.6, 8.5);
     let tx = clamp(open, 2.2, 17.8);
     let ty;
     if (kind === "lob") {
@@ -1263,12 +1339,16 @@ export class Game {
   }
 
   toMenu() {
+    if (this.challengeOriginalVenue) this.venue = this.challengeOriginalVenue;
     this.screen = "menu";
     this.demo = true;
     this.mode = "cpu";
     this.paused = false;
     this.replay = null;
     this.challengeIndex = -1;
+    this.challengeRunActive = false;
+    this.challengeBoosts = Object.fromEntries(STAT_IDS.map((id) => [id, 0]));
+    this.challengeOriginalVenue = null;
     this.diff = this.menuDiff || "normal";
     document.body.classList.add("menu-open");
     document.body.classList.remove("game-open");
@@ -1407,6 +1487,10 @@ export class Game {
     return this.mode === "doubles";
   }
 
+  matchTargetScore() {
+    return this.mode === "challenge" ? TOURNAMENT[this.challengeIndex]?.points || 11 : 11;
+  }
+
   isCpuSide(p) {
     if (p === this.near) return false;
     return this.mode === "cpu" || this.mode === "doubles" || this.mode === "challenge";
@@ -1448,6 +1532,34 @@ export class Game {
     }
   }
 
+  tournamentRecords() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(TOURNEY_RECORD_KEY) || "{}");
+      return saved && typeof saved === "object" ? saved : {};
+    } catch {
+      return {};
+    }
+  }
+
+  saveTournamentResult(i, grade, won, objectiveMet) {
+    const records = this.tournamentRecords();
+    const previous = records[i] || { attempts: 0, wins: 0, objectives: 0, bestGrade: "" };
+    const grades = ["", "D", "C", "B", "A", "S"];
+    const better = grades.indexOf(grade) > grades.indexOf(previous.bestGrade || "");
+    records[i] = {
+      attempts: previous.attempts + 1,
+      wins: previous.wins + (won ? 1 : 0),
+      objectives: previous.objectives + (won && objectiveMet ? 1 : 0),
+      bestGrade: better ? grade : previous.bestGrade,
+    };
+    try {
+      localStorage.setItem(TOURNEY_RECORD_KEY, JSON.stringify(records));
+    } catch {
+      /* ignore */
+    }
+    return records[i];
+  }
+
   openChallenge() {
     $("menu").hidden = true;
     $("roster").hidden = true;
@@ -1480,8 +1592,9 @@ export class Game {
       btn.classList.toggle("done", done);
       btn.classList.toggle("locked", lock);
       btn.classList.toggle("now", now && !lock);
-      const tag = done ? "Won" : lock ? "Locked" : "You are here";
-      btn.innerHTML = `<span class="round-meta"><strong>${rnd.round}</strong><em>${rnd.name} · ${rnd.style}</em></span><span class="tag">${tag}</span>`;
+      const record = this.tournamentRecords()[i];
+      const tag = done ? `Won${record?.bestGrade ? ` · ${record.bestGrade}` : ""}` : lock ? "Locked" : "You are here";
+      btn.innerHTML = `<span class="round-meta"><strong>${rnd.round}</strong><em>${rnd.name} · ${rnd.style} · to ${rnd.points}</em></span><span class="tag">${tag}</span>`;
       if (!lock) btn.onclick = () => this.openScout(i);
       map.appendChild(btn);
     });
@@ -1502,7 +1615,18 @@ export class Game {
     $("scout-title").textContent = rnd.name;
     $("scout-vs").textContent = `YOU vs ${rnd.name}`;
     $("scout-blurb").textContent = `${rnd.style}. ${rnd.blurb}`;
-    $("scout-diff").textContent = `Difficulty · ${rnd.diff}`;
+    const venue = VENUES.find((v) => v.id === rnd.venue);
+    $("scout-diff").textContent = `Difficulty · ${rnd.diff} · First to ${rnd.points} · ${venue?.name || "Tournament court"}`;
+    $("scout-tactic").textContent = `${rnd.tactic.label}. ${rnd.tactic.tell}`;
+    $("scout-counter").textContent = rnd.tactic.counter;
+    $("scout-objective").textContent = `${rnd.objective.label}. Clear it for a +2 winner's boost.`;
+    const record = this.tournamentRecords()[i];
+    $("scout-record").textContent = record
+      ? `Best grade ${record.bestGrade || "—"} · ${record.wins} win${record.wins === 1 ? "" : "s"} · ${record.objectives} bonus clear${record.objectives === 1 ? "" : "s"}`
+      : "No match history yet";
+    const boosts = this.challengeBoostSummary();
+    $("scout-boosts").hidden = !boosts;
+    $("scout-boosts").textContent = boosts ? `Run boosts · ${boosts}` : "";
     const box = $("scout-stats");
     box.innerHTML = "";
     const st = rnd.stats;
@@ -1522,15 +1646,23 @@ export class Game {
   }
 
   startChallenge(i) {
+    if (!this.challengeRunActive) {
+      this.challengeRunActive = true;
+      this.challengeBoosts = Object.fromEntries(STAT_IDS.map((id) => [id, 0]));
+      this.challengeOriginalVenue = this.venue;
+    }
     this.challengeIndex = i;
     const rnd = TOURNAMENT[i];
     this.diff = rnd.diff;
     this.oppBuild = { ...cloneStats(rnd.stats), name: rnd.name };
     this.oppLook = { ...(rnd.look || randomLook()) };
+    this.venue = VENUES.find((v) => v.id === rnd.venue) || this.venue;
     $("challenge").hidden = true;
     $("scout").hidden = true;
     this.startMatch("challenge");
     this.flash(rnd.round, 1.15);
+    this.toast(`${this.venue.name} · ${rnd.tactic.label}`);
+    if (i >= TOURNAMENT.length - 2) this.sfx.crowd(i === TOURNAMENT.length - 1 ? 1.6 : 1.05);
   }
 
   playNextChallenge() {
@@ -1542,6 +1674,83 @@ export class Game {
     }
     $("over").hidden = true;
     this.openScout(next);
+  }
+
+  challengeBuild() {
+    const build = { ...this.youBuild };
+    for (const id of STAT_IDS) build[id] = clamp((this.youBuild[id] || 6) + (this.challengeBoosts[id] || 0), 2, 10);
+    return build;
+  }
+
+  challengeObjectiveState() {
+    const objective = TOURNAMENT[this.challengeIndex]?.objective;
+    if (!objective) return { current: 0, target: 0, met: false, label: "" };
+    let current = 0;
+    if (objective.type === "margin") current = Math.max(0, this.match.near - this.match.far);
+    else current = this.meta[objective.type] || 0;
+    const met = current >= objective.value && (objective.type !== "margin" || this.match.near > this.match.far);
+    return { current, target: objective.value, met, label: objective.label, type: objective.type };
+  }
+
+  challengeGrade(won, objectiveMet) {
+    if (!won) return "D";
+    const margin = this.match.near - this.match.far;
+    let score = 2 + (objectiveMet ? 1 : 0) + (margin >= 3 ? 1 : 0) + (this.match.far === 0 ? 1 : 0);
+    if (score >= 5) return "S";
+    if (score === 4) return "A";
+    if (score === 3) return "B";
+    return "C";
+  }
+
+  challengeBoostSummary() {
+    return STAT_LIST
+      .filter(([id]) => (this.challengeBoosts[id] || 0) > 0)
+      .map(([id, label]) => `${label} +${this.challengeBoosts[id]}`)
+      .join(" · ");
+  }
+
+  challengeUpgradeChoices() {
+    const build = this.challengeBuild();
+    const available = STAT_IDS.filter((id) => build[id] < 10);
+    const picked = [];
+    const start = (this.challengeIndex * 2 + statSum(this.challengeBoosts)) % Math.max(1, available.length);
+    for (let step = 0; picked.length < Math.min(3, available.length); step++) {
+      const id = available[(start + step) % available.length];
+      if (!picked.includes(id)) picked.push(id);
+    }
+    return picked;
+  }
+
+  showChallengeUpgrades() {
+    const section = $("tourney-upgrade");
+    const choices = $("upgrade-choices");
+    const bonus = this.challengeObjectiveState().met;
+    const amount = bonus ? 2 : 1;
+    $("upgrade-kicker").textContent = bonus ? "Bonus cleared · Power boost" : "Winner's boost";
+    choices.innerHTML = "";
+    for (const id of this.challengeUpgradeChoices()) {
+      const info = STAT_UPGRADES[id];
+      const gain = Math.min(amount, 10 - this.challengeBuild()[id]);
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "upgrade-choice";
+      button.dataset.stat = id;
+      button.dataset.amount = String(gain);
+      button.innerHTML = `<strong>${info.label} +${gain}</strong><span>${info.desc}</span>`;
+      button.onclick = () => this.chooseChallengeUpgrade(id, gain);
+      choices.appendChild(button);
+    }
+    section.hidden = false;
+    $("btn-rematch").hidden = true;
+    $("btn-next-challenge").hidden = true;
+  }
+
+  chooseChallengeUpgrade(id, amount = 1) {
+    if (!STAT_IDS.includes(id) || this.challengeBuild()[id] >= 10) return;
+    const gain = clamp(Number(amount) || 1, 1, 2);
+    this.challengeBoosts[id] = Math.min(10 - (this.youBuild[id] || 6), (this.challengeBoosts[id] || 0) + gain);
+    $("tourney-upgrade").hidden = true;
+    this.playNextChallenge();
   }
 
   buzz(ms) {
@@ -1768,7 +1977,8 @@ export class Game {
     }
 
     const opp = this.closestOpp(p);
-    const kind = this.chooseShotKind(p, b, power);
+    const kind = !this.isHuman(p) && p.aiIntent ? p.aiIntent : this.chooseShotKind(p, b, power);
+    p.aiIntent = null;
     p.hand = b.x >= p.x ? 1 : -1;
     const kitLine = p.side === "near" ? 15 : 29;
     const atKitchen = Math.abs(p.y - kitLine) < 3.1;
@@ -2043,6 +2253,20 @@ export class Game {
     for (const p of bots) this.runAI(p, dt);
   }
 
+  aiTactic(p) {
+    if (this.mode !== "challenge" || p.side !== "far") return null;
+    return TOURNAMENT[this.challengeIndex]?.tactic || null;
+  }
+
+  aiHomeY(p, fallback) {
+    const tactic = this.aiTactic(p);
+    if (!tactic || !this.twoBounceDone()) return fallback;
+    const kitchen = clamp(tactic.kitchen ?? 1, 0, 1);
+    return p.side === "near"
+      ? lerp(5.5, kitchenSafeY("near"), kitchen)
+      : lerp(38.5, kitchenSafeY("far"), kitchen);
+  }
+
   runAI(p, dt) {
     const d = DIFF[this.demo ? "normal" : this.diff];
     const serveReturn = this.returningServe(p);
@@ -2076,7 +2300,7 @@ export class Game {
     }
     const outY = kitchenSafeY(p.side);
     if (this.phase !== "rally" || !this.ball.live) {
-      const homeY = this.twoBounceDone() ? outY : p.side === "near" ? 4 : 40;
+      const homeY = this.twoBounceDone() ? this.aiHomeY(p, outY) : p.side === "near" ? 4 : 40;
       this.moveTo(p, 10, homeY, dt);
       return;
     }
@@ -2144,7 +2368,7 @@ export class Game {
     } else {
       p.aiChaseX = null;
       p.aiTrackHit = null;
-      const homeY = this.twoBounceDone() ? outY : p.side === "near" ? 5.5 : 38.5;
+      const homeY = this.twoBounceDone() ? this.aiHomeY(p, outY) : p.side === "near" ? 5.5 : 38.5;
       const homeX = this.isDoubles() ? (p.x < 10 ? 5 : 15) : clamp(lerp(p.x, this.ball.x, 0.18), 3, 17);
       this.moveTo(p, homeX, homeY, dt);
     }
@@ -2156,6 +2380,38 @@ export class Game {
     const third = this.match.serveBounced && !this.match.returnBounced && p.side === this.match.server;
     const pow = p.stats?.power ?? 6;
     const hands = p.hands ?? 6;
+    const tactic = this.aiTactic(p);
+    p.aiIntent = null;
+    if (tactic) {
+      const opp = this.closestOpp(p);
+      const oppAtKitchen = opp && Math.abs(opp.y - (opp.side === "near" ? 15 : 29)) < 3.8;
+      if (this.ball.z > 5.2 && atK) {
+        p.aiIntent = "smash";
+        return 0.85;
+      }
+      if (third) {
+        p.aiIntent = "drop";
+        return 0.16;
+      }
+      if (atK) {
+        if (this.ballAttackable(p) && Math.random() < tactic.attack) {
+          p.aiIntent = "speedup";
+          return 0.7;
+        }
+        p.aiIntent = "dink";
+        return 0.13;
+      }
+      if (oppAtKitchen && Math.random() < tactic.lob) {
+        p.aiIntent = "lob";
+        return 0.56;
+      }
+      if (Math.random() < tactic.drive) {
+        p.aiIntent = "drive";
+        return 0.62;
+      }
+      p.aiIntent = "drop";
+      return 0.18;
+    }
     if (this.ball.z > 5.2 && atK) return 0.85;
     if (third) return 0.16;
     if (atK) {
@@ -2336,6 +2592,13 @@ export class Game {
 
     if (faulter !== "near" && faulter !== "far") faulter = this.ball.lastHit === "far" ? "far" : "near";
     const winner = faulter === "near" ? "far" : "near";
+    if (
+      winner === "near" &&
+      this.ball.lastHit === "near" &&
+      (this.lastKind === "speedup" || this.lastKind === "smash")
+    ) {
+      this.meta.attackWins += 1;
+    }
     const server = this.match.server;
     const serverWon = winner === server;
     this.match[winner] += 1;
@@ -2408,9 +2671,10 @@ export class Game {
       if (faultCall) this.flash(faultCall, 1.1);
       else this.flash("POINT", 1.05);
     }
-    if (!this.match.switched && (this.match.near === 6 || this.match.far === 6)) {
+    const switchAt = Math.ceil(this.matchTargetScore() / 2);
+    if (!this.match.switched && (this.match.near === switchAt || this.match.far === switchAt)) {
       this.match.switched = true;
-      this.toast("6 — switch sides");
+      this.toast(`${switchAt} — switch sides`);
     }
     this.syncHud();
     if (highlight && this.tape.length >= 18) {
@@ -2421,9 +2685,11 @@ export class Game {
   }
 
   checkWin() {
+    if (this.screen === "over") return;
     const a = this.match.near;
     const b = this.match.far;
-    if ((a >= 11 || b >= 11) && Math.abs(a - b) >= 2) {
+    const target = this.matchTargetScore();
+    if ((a >= target || b >= target) && Math.abs(a - b) >= 2) {
       this.screen = "over";
       this.phase = "dead";
       this.deadT = 999;
@@ -2431,23 +2697,28 @@ export class Game {
       $("over-title").textContent = a > b ? "You win" : this.mode === "p2" ? "Player 2 wins" : "CPU wins";
       const m = this.meta;
       $("over-sub").textContent = `${a} – ${b}`;
-      $("over-kicker").textContent = "Game to 11 · win by 2";
+      $("over-kicker").textContent = `Game to ${target} · win by 2`;
       $("over-stats").textContent = `Longest rally ${m.longest} · ${m.aces} ace${m.aces === 1 ? "" : "s"} · ${m.winners} winner${m.winners === 1 ? "" : "s"} · ${m.speedups} speed-ups`;
+      $("tourney-upgrade").hidden = true;
+      $("btn-rematch").hidden = false;
       $("btn-next-challenge").hidden = true;
       if (this.mode === "challenge") {
         const i = this.challengeIndex;
         const rnd = TOURNAMENT[i];
         const last = TOURNAMENT.length - 1;
+        const objectiveMet = this.challengeObjectiveState().met;
+        const grade = this.challengeGrade(a > b, objectiveMet);
+        this.saveTournamentResult(i, grade, a > b, objectiveMet);
+        $("over-stats").textContent += ` · Grade ${grade}${objectiveMet ? " · bonus cleared" : ""}`;
         if (a > b) {
           this.saveGauntlet(Math.max(this.gauntletCleared(), i + 1));
           if (i >= last) {
             $("over-title").textContent = "Champion";
-            $("over-kicker").textContent = "Tournament complete";
+            $("over-kicker").textContent = `Tournament complete · Grade ${grade}`;
           } else {
-            $("over-kicker").textContent = `${rnd.round} won · ${i + 1} / ${TOURNAMENT.length}`;
+            $("over-kicker").textContent = `${rnd.round} won · ${i + 1} / ${TOURNAMENT.length} · Grade ${grade}`;
             $("over-title").textContent = `Beat ${rnd.name}`;
-            $("btn-next-challenge").hidden = false;
-            $("btn-next-challenge").textContent = `Next · ${TOURNAMENT[i + 1].round}`;
+            this.showChallengeUpgrades();
           }
         } else {
           $("over-kicker").textContent = `${rnd.round} lost · rematch or menu`;
@@ -2564,6 +2835,17 @@ export class Game {
     $("chip-serve").classList.toggle("on", this.match.serveBounced);
     $("chip-return").classList.toggle("on", this.match.returnBounced);
     $("chip-rally").textContent = `Rally ${this.rallyLen}`;
+    const objectiveChip = $("chip-objective");
+    if (this.mode === "challenge" && this.challengeIndex >= 0) {
+      const objective = this.challengeObjectiveState();
+      const labels = { margin: "Lead", longest: "Rally", aces: "Ace", attackWins: "Attack" };
+      objectiveChip.hidden = false;
+      objectiveChip.textContent = `Bonus · ${labels[objective.type] || "Goal"} ${Math.min(objective.current, objective.target)}/${objective.target}`;
+      objectiveChip.classList.toggle("done", objective.met);
+    } else {
+      objectiveChip.hidden = true;
+      objectiveChip.classList.remove("done");
+    }
     this.syncActionButton();
   }
 

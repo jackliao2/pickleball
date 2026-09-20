@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
-Sitemap: https://playpickleball-rho.vercel.app/sitemap.xml
+Sitemap: https://vspickleball.com/sitemap.xml
 

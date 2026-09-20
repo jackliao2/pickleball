@@ -3,14 +3,16 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Play Pickleball Online Free — Real Kitchen, Two-Bounce, Instant Play</title>
+  <title>VS Pickleball — Play Pickleball Online Free, Real Kitchen, Two-Bounce</title>
   <meta name="description" content="Play pickleball in your browser. Regulation 20×44 court, kitchen (non-volley zone), two-bounce rule, underhand serve, rally scoring to 11. Free, no download — singles, doubles, or a challenge gauntlet." />
   <meta name="keywords" content="pickleball game online, play pickleball online, free pickleball game, pickleball" />
-  <link rel="canonical" href="https://playpickleball-rho.vercel.app/" />
+  <link rel="canonical" href="https://vspickleball.com/" />
   <meta property="og:type" content="website" />
-  <meta property="og:title" content="Play Pickleball Online Free" />
+  <meta property="og:title" content="VS Pickleball — Play Pickleball Online Free" />
+  <meta property="og:site_name" content="VS Pickleball" />
+  <meta property="og:url" content="https://vspickleball.com/" />
   <meta property="og:description" content="Regulation kitchen, two-bounce rule, underhand serve. Instant play in your browser." />
-  <meta property="og:image" content="/og.jpg" />
+  <meta property="og:image" content="https://vspickleball.com/og.jpg" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="theme-color" content="#0c2744" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
@@ -23,7 +25,8 @@
   {
     "@context": "https://schema.org",
     "@type": "VideoGame",
-    "name": "Play Pickleball",
+    "name": "VS Pickleball",
+    "url": "https://vspickleball.com/",
     "description": "Free browser pickleball game with regulation court, kitchen, two-bounce rule, and rally scoring.",
     "playMode": ["SinglePlayer", "MultiPlayer"],
     "applicationCategory": "Game",
@@ -61,6 +64,7 @@
         <span class="chip" id="chip-serve">Serve bounce</span>
         <span class="chip" id="chip-return">Return bounce</span>
         <span class="chip chip-rally" id="chip-rally">Rally 0</span>
+        <span class="chip chip-objective" id="chip-objective" hidden>Bonus</span>
       </div>
       <div class="keys" id="keys-hint">
         <span class="wasd">
@@ -68,7 +72,15 @@
           <span class="asd"><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span>
         </span>
         <kbd class="wide">Space</kbd>
-        <span class="keys-lab">tap dink · hold speed-up</span>
+        <span class="keys-lab" id="keys-label">tap dink · hold speed-up</span>
+      </div>
+      <div class="keys keys-p2" id="keys-p2" hidden>
+        <span class="wasd">
+          <kbd class="w">↑</kbd>
+          <span class="asd"><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd></span>
+        </span>
+        <kbd class="wide">Enter</kbd>
+        <span class="keys-lab">player 2 · tap dink · hold speed-up</span>
       </div>
     </header>
 
@@ -87,7 +99,7 @@
     <div id="menu" class="overlay">
       <div class="card">
         <p class="kicker">Free · Instant play · No download</p>
-        <h1>Pickleball</h1>
+        <h1>VS Pickleball</h1>
         <p class="lede">A real court. A real kitchen. The two-bounce rule. Rally scoring to 11. Singles, doubles, or a tournament from club rec to pro. This is pickleball, not tennis with a green ball.</p>
         <div class="diff" role="group" aria-label="Difficulty">
           <button type="button" data-diff="easy">Easy</button>
@@ -184,7 +196,7 @@
           <li><strong>Kitchen.</strong> Stand just behind the kitchen line after the two-bounce. Tap to dink. Hold to speed-up at the opponent’s body. You may not volley while in the kitchen or on the line.</li>
           <li><strong>Scoring.</strong> Rally scoring: win the rally, get the point. Opponent hits out, nets, or misses — you score. If they were serving, you also take the serve (doubles: first fault is second server, then side-out). Game to 11, win by 2.</li>
           <li><strong>Doubles.</strong> You plus a kitchen partner vs two CPUs. The score is called n – f – server. The first sequence of the game is one serve only (0-0-2); after that both players serve.</li>
-          <li><strong>Tournament.</strong> Climb the map, weak to strong. Scout each opponent’s style before you play. Early rounds have fewer stat points. Progress saves on this device.</li>
+          <li><strong>Tournament.</strong> Climb the map, weak to strong. Early rounds are quick games to 7, later rounds grow to 9, and the championship is to 11. Scout each opponent, clear bonus challenges, and choose upgrades between rounds. Progress and best grades save on this device.</li>
           <li><strong>Net cord.</strong> A serve that clips the net and still lands in is live (current USA Pickleball: no let serve).</li>
         </ul>
         <h3>Controls</h3>
@@ -216,6 +228,13 @@
         <p class="lede" id="scout-vs">YOU vs Jordan Blake</p>
         <p class="hint" id="scout-blurb"></p>
         <p class="scout-diff" id="scout-diff"></p>
+        <div class="scout-plan">
+          <p><strong>Game plan</strong><span id="scout-tactic"></span></p>
+          <p><strong>Your counter</strong><span id="scout-counter"></span></p>
+          <p><strong>Bonus challenge</strong><span id="scout-objective"></span></p>
+        </div>
+        <p class="scout-record" id="scout-record"></p>
+        <p class="scout-boosts" id="scout-boosts" hidden></p>
         <div id="scout-stats" class="scout-stats"></div>
         <button type="button" class="btn primary" id="btn-scout-play">Play match</button>
         <button type="button" class="btn ghost" id="btn-scout-back">Back to map</button>
@@ -236,6 +255,12 @@
         <h2 id="over-title">You win</h2>
         <p class="lede" id="over-sub">11 – 9</p>
         <p class="hint" id="over-stats"></p>
+        <section id="tourney-upgrade" class="tourney-upgrade" hidden>
+          <p class="kicker" id="upgrade-kicker">Winner's boost</p>
+          <h3>Choose one upgrade</h3>
+          <p class="hint">It lasts for the rest of this tournament run.</p>
+          <div id="upgrade-choices" class="upgrade-choices"></div>
+        </section>
         <button type="button" class="btn primary" id="btn-rematch">Rematch</button>
         <button type="button" class="btn" id="btn-next-challenge" hidden>Next opponent</button>
         <button type="button" class="btn" id="btn-over-menu">Main menu</button>

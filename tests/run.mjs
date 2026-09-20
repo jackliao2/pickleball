@@ -132,6 +132,7 @@ try {
       deviceScaleFactor: 1,
     });
     await page.evaluate(() => localStorage.setItem("pb-tutorial-v1", "done"));
+    assert.equal(await page.locator("#btn-p2").isHidden(), true);
     await page.click("#btn-cpu");
     await page.click("#btn-start-match");
     await page.touchscreen.tap(20, 20);
@@ -307,6 +308,149 @@ try {
     assert(rates.hard.rate >= 0.93 && rates.hard.rate <= 0.99, `hard should be demanding but not perfect (${rateDetail})`);
     assert.deepEqual(errors, []);
     passed("difficulty calibration", rateDetail);
+    await context.close();
+  }
+
+  {
+    const { context, page, errors } = await newPage({ viewport: { width: 1280, height: 800 } });
+    await page.click("#btn-p2");
+    await page.click("#btn-start-match");
+    const p2 = await page.evaluate(() => {
+      const app = document.querySelector("#app").getBoundingClientRect();
+      const score = document.querySelector("#hud .sb").getBoundingClientRect();
+      const far = window.game.project(window.game.far.x, window.game.far.y, 0);
+      return {
+        mode: window.game.mode,
+        compact: document.querySelector("#hud").classList.contains("p2-layout"),
+        scoreRight: score.right,
+        farCenter: app.left + far.sx,
+      };
+    });
+    assert.equal(p2.mode, "p2");
+    assert.equal(p2.compact, true);
+    assert(p2.scoreRight < p2.farCenter - 35, "2-player score panel must clear the far-side player");
+    assert.equal(await page.locator("#keys-p2").isVisible(), true);
+    assert.match(await page.locator("#keys-p2").textContent(), /↑.*←.*↓.*→.*Enter.*player 2/is);
+    assert.match(await page.locator("#keys-label").textContent(), /player 1/i);
+
+    await page.evaluate(() => window.game.toMenu());
+    await page.click("#btn-cpu");
+    await page.click("#btn-start-match");
+    const cpu = await page.evaluate(() => ({
+      compact: document.querySelector("#hud").classList.contains("p2-layout"),
+      scoreWidth: document.querySelector("#hud .sb").getBoundingClientRect().width,
+    }));
+    assert.equal(cpu.compact, false);
+    assert.equal(await page.locator("#keys-p2").isHidden(), true);
+    assert(cpu.scoreWidth >= 500, "other modes must keep the standard score layout");
+    assert.deepEqual(errors, []);
+    passed("2-player HUD placement", "compact left gutter; other modes unchanged");
+    await context.close();
+  }
+
+  {
+    const { context, page, errors } = await newPage({ viewport: { width: 1280, height: 800 } });
+    await page.click("#btn-challenge");
+    await page.click("#tourney-map .map-node");
+    const scout = await page.evaluate(() => ({
+      tactic: document.querySelector("#scout-tactic").textContent,
+      counter: document.querySelector("#scout-counter").textContent,
+      meta: document.querySelector("#scout-diff").textContent,
+    }));
+    assert.match(scout.tactic, /Soft starter/);
+    assert.match(scout.counter, /Keep the ball deep/);
+    assert.match(scout.meta, /First to 7.*Park/);
+
+    await page.click("#btn-scout-play");
+    const opener = await page.evaluate(() => ({
+      mode: window.game.mode,
+      venue: window.game.venue.id,
+      tactic: window.game.aiTactic(window.game.far)?.id,
+      target: window.game.matchTargetScore(),
+    }));
+    assert.deepEqual(opener, { mode: "challenge", venue: "park", tactic: "soft-starter", target: 7 });
+
+    await page.evaluate(() => {
+      window.game.match.near = 7;
+      window.game.match.far = 5;
+      window.game.checkWin();
+    });
+    assert.equal(await page.locator("#tourney-upgrade").isVisible(), true);
+    assert.equal(await page.locator("#upgrade-choices .upgrade-choice").count(), 3);
+    assert.equal(await page.locator("#btn-rematch").isHidden(), true);
+    const chosenStat = await page.locator("#upgrade-choices .upgrade-choice").first().getAttribute("data-stat");
+    await page.locator("#upgrade-choices .upgrade-choice").first().click();
+    assert.equal(await page.locator("#scout").isVisible(), true);
+    assert.match(await page.locator("#scout-title").textContent(), /Sam Ortiz/);
+    assert.match(await page.locator("#scout-boosts").textContent(), /\+1/);
+
+    await page.click("#btn-scout-play");
+    const upgraded = await page.evaluate((stat) => {
+      const g = window.game;
+      const originalRandom = Math.random;
+      let softIntent;
+      let bangerIntent;
+      try {
+        g.match.serveBounced = true;
+        g.match.returnBounced = true;
+        g.far.y = 38;
+        g.near.y = 15;
+        g.ball.z = 2;
+        Math.random = () => 0.5;
+        g.challengeIndex = 0;
+        g.chooseAIShot(g.far);
+        softIntent = g.far.aiIntent;
+        g.challengeIndex = 4;
+        g.chooseAIShot(g.far);
+        bangerIntent = g.far.aiIntent;
+      } finally {
+        Math.random = originalRandom;
+        g.challengeIndex = 1;
+      }
+      return {
+        venue: g.venue.id,
+        boosted: g.near.stats[stat],
+        base: g.youBuild[stat],
+        boosts: g.challengeBoosts[stat],
+        tactic: g.aiTactic(g.far)?.id,
+        softIntent,
+        bangerIntent,
+      };
+    }, chosenStat);
+    assert.equal(upgraded.venue, "gym");
+    assert.equal(upgraded.boosted, Math.min(10, upgraded.base + 1));
+    assert.equal(upgraded.boosts, 1);
+    assert.equal(upgraded.tactic, "retriever");
+    assert.equal(upgraded.softIntent, "drop");
+    assert.equal(upgraded.bangerIntent, "drive");
+
+    await page.evaluate(() => {
+      const g = window.game;
+      g.meta.longest = 8;
+      g.match.near = 7;
+      g.match.far = 5;
+      g.syncHud();
+    });
+    assert.match(await page.locator("#chip-objective").textContent(), /Rally 8\/8/);
+    assert.equal(await page.locator("#chip-objective").evaluate((el) => el.classList.contains("done")), true);
+    await page.evaluate(() => window.game.checkWin());
+    assert.equal(await page.locator("#upgrade-choices .upgrade-choice").first().getAttribute("data-amount"), "2");
+    assert.match(await page.locator("#upgrade-kicker").textContent(), /Bonus cleared/);
+    const records = await page.evaluate(() => JSON.parse(localStorage.getItem("pb-tourney-record-v1")));
+    assert.equal(records[0].bestGrade, "C");
+    assert.equal(records[1].bestGrade, "B");
+    assert.equal(records[1].objectives, 1);
+
+    await page.evaluate(() => window.game.toMenu());
+    const restored = await page.evaluate(() => ({
+      venue: window.game.venue.id,
+      active: window.game.challengeRunActive,
+      boostTotal: Object.values(window.game.challengeBoosts).reduce((sum, value) => sum + value, 0),
+      target: window.game.matchTargetScore(),
+    }));
+    assert.deepEqual(restored, { venue: "park", active: false, boostTotal: 0, target: 11 });
+    assert.deepEqual(errors, []);
+    passed("tournament run", "scouting, AI identities, win upgrade, venue progression, clean reset");
     await context.close();
   }
 } finally {

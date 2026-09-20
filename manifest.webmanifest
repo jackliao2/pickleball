@@ -1,6 +1,6 @@
 {
-  "name": "Play Pickleball",
-  "short_name": "Pickleball",
+  "name": "VS Pickleball",
+  "short_name": "VS Pickleball",
   "description": "Free pickleball in your browser. Real kitchen, two-bounce rule, instant play.",
   "start_url": "/",
   "display": "standalone",
