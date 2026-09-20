@@ -449,8 +449,24 @@ try {
       target: window.game.matchTargetScore(),
     }));
     assert.deepEqual(restored, { venue: "park", active: false, boostTotal: 0, target: 11 });
+
+    // A loss ends the run: progress resets to round 1, rematch is not offered.
+    await page.evaluate(() => {
+      window.game.openChallenge();
+      window.game.startChallenge(1);
+      window.game.match.near = 3;
+      window.game.match.far = 9;
+      window.game.checkWin();
+    });
+    assert.match(await page.locator("#over-title").textContent(), /Eliminated/);
+    assert.equal(await page.locator("#btn-rematch").isHidden(), true);
+    assert.equal(await page.evaluate(() => window.game.gauntletCleared()), 0);
+    await page.click("#btn-next-challenge");
+    assert.equal(await page.locator("#challenge").isVisible(), true);
+    assert.match(await page.locator("#challenge-lede").textContent(), /^0 \/ /);
+    assert.equal(await page.locator("#tourney-map .map-node.locked").count(), 5);
     assert.deepEqual(errors, []);
-    passed("tournament run", "scouting, AI identities, win upgrade, venue progression, clean reset");
+    passed("tournament run", "scouting, AI identities, win upgrade, venue progression, loss resets run");
     await context.close();
   }
 } finally {

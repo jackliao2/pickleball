@@ -1667,7 +1667,7 @@ export class Game {
 
   playNextChallenge() {
     const next = this.challengeIndex + 1;
-    if (next >= TOURNAMENT.length) {
+    if (next >= TOURNAMENT.length || this.gauntletCleared() === 0) {
       this.toMenu();
       this.openChallenge();
       return;
@@ -2718,10 +2718,19 @@ export class Game {
           } else {
             $("over-kicker").textContent = `${rnd.round} won · ${i + 1} / ${TOURNAMENT.length} · Grade ${grade}`;
             $("over-title").textContent = `Beat ${rnd.name}`;
+            $("btn-next-challenge").textContent = "Next opponent";
             this.showChallengeUpgrades();
           }
         } else {
-          $("over-kicker").textContent = `${rnd.round} lost · rematch or menu`;
+          // One loss ends the run: progress and boosts reset, records stay.
+          this.saveGauntlet(0);
+          this.challengeBoosts = Object.fromEntries(STAT_IDS.map((id) => [id, 0]));
+          $("over-title").textContent = "Eliminated";
+          $("over-kicker").textContent = `${rnd.round} lost · run over`;
+          $("over-stats").textContent += " · Start a new run from Round 1";
+          $("btn-rematch").hidden = true;
+          $("btn-next-challenge").textContent = "New run";
+          $("btn-next-challenge").hidden = false;
         }
       }
       this.sfx.whistle();
@@ -3279,16 +3288,6 @@ export class Game {
     line(P(10, 0), P(10, 15), lw(8));
     line(P(10, 29), P(10, 44), lw(36));
 
-    ctx.save();
-    ctx.globalAlpha = 0.55;
-    ctx.fillStyle = v.line;
-    ctx.font = "600 11px Outfit, sans-serif";
-    ctx.textAlign = "center";
-    const k1 = P(10, 17.2);
-    const k2 = P(10, 26.8);
-    ctx.fillText("KITCHEN", k1.sx, k1.sy);
-    ctx.fillText("KITCHEN", k2.sx, k2.sy);
-    ctx.restore();
   }
 
   drawServeTarget(ctx) {
