@@ -100,6 +100,34 @@ const figs = {
     <text x="${CX}" y="${NET + K + 40}" text-anchor="middle" fill="${DIM}" font-size="11">Win a point → partners swap sides, same server</text>
     <text x="${CX}" y="${NET + K + 56}" text-anchor="middle" fill="${DIM}" font-size="11">Lose a rally → serve passes to Server 2, then side-out</text>`),
 
+  // Side view: dink, third-shot drop, and drive trajectories over the net
+  arc: () => {
+    const s = 8, x0 = 20, ground = 150, L = 44 * s;               // 8 px/ft, court 352 wide
+    const ft = (f) => x0 + f * s, up = (f) => ground - f * s;
+    const net = ft(22), netH = up(3);                              // 36 in ≈ 3 ft
+    const q = (xa, ya, xc, yc, xb, yb) => `M${xa} ${ya} Q ${xc} ${yc} ${xb} ${yb}`;
+    return base(`${defs}
+      <rect x="${ft(0)}" y="${ground}" width="${L}" height="6" fill="${COURT}"/>
+      <rect x="${ft(15)}" y="${ground}" width="${14 * s}" height="6" fill="${BALL}" opacity="0.6"/>
+      <line x1="${net}" y1="${ground}" x2="${net}" y2="${netH}" stroke="${LINE}" stroke-width="3"/>
+      <text x="${net + 5}" y="${up(0.8)}" fill="${DIM}" font-size="10">net</text>
+      <text x="${ft(0)}" y="${ground + 20}" fill="${DIM}" font-size="10">baseline</text>
+      <text x="${ft(15)}" y="${ground + 20}" fill="${DIM}" font-size="10">kitchen line</text>
+      <text x="${ft(29)}" y="${ground + 20}" fill="${DIM}" font-size="10">kitchen line</text>
+      <text x="${ft(44)}" y="${ground + 20}" text-anchor="end" fill="${DIM}" font-size="10">baseline</text>
+      ${arrow(q(ft(15), up(2.5), ft(21), up(5.2), ft(26), up(0.2)))}
+      <text x="${ft(18)}" y="${up(6.6)}" fill="${BALL}" font-weight="700" font-size="11">Dink</text>
+      <text x="${ft(18)}" y="${up(5.6)}" fill="${DIM}" font-size="10">low apex, lands in kitchen</text>
+      ${arrow(q(ft(1), up(2.5), ft(16), up(9.5), ft(27), up(0.2)), '#8fd3ff')}
+      <text x="${ft(2)}" y="${up(11.4)}" fill="#8fd3ff" font-weight="700" font-size="11">Third-shot drop</text>
+      <text x="${ft(2)}" y="${up(10.4)}" fill="${DIM}" font-size="10">high arc from the baseline, dies in the kitchen</text>
+      ${arrow(q(ft(1), up(2.8), ft(22), up(4.4), ft(43), up(0.3)), '#ff8a80')}
+      <text x="${ft(33)}" y="${up(3.6)}" fill="#ff8a80" font-weight="700" font-size="11">Drive</text>
+      <text x="${ft(33)}" y="${up(2.6)}" fill="${DIM}" font-size="10">flat, attackable if it sits up</text>
+      <circle cx="${ft(1)}" cy="${up(2.6)}" r="4" fill="${LINE}"/><circle cx="${ft(15)}" cy="${up(2.6)}" r="4" fill="${LINE}"/>
+    `, ground + 30, L + 40);
+  },
+
   // Court-size comparison: tennis, padel, pickleball/badminton, at 3 px per foot
   compare: () => {
     const s = 3, gap = 28, top = 34;
@@ -127,6 +155,7 @@ const captions = {
   serve: 'The serve goes diagonally into the opposite service box. Every line is in except the kitchen line.',
   twobounce: 'The two-bounce rule: the serve bounces (1), the return bounces (2), and only then can either side volley. The serving team is stuck at the baseline for the third shot.',
   doubles: 'A doubles serving turn. The partner on the right when the turn begins is server 1; both partners serve before a side-out.',
+  arc: 'Side view, not to scale vertically. A dink and a third-shot drop both die in the kitchen so they cannot be volleyed; a drive clears the net by inches and keeps going.',
   compare: 'Court sizes to scale. A pickleball court has exactly the footprint of a doubles badminton court and fits inside a tennis court almost four times over.',
 };
 
