@@ -1,7 +1,14 @@
+/* style.css locks html+body to the viewport for the game canvas.
+   Doc pages must scroll, so undo it on BOTH elements — overriding body alone
+   leaves html at overflow:hidden and the page cannot move. */
+html.docs,
+html:has(body.docs),
 body.docs {
   overflow: auto;
+  overflow-y: auto;
   height: auto;
   min-height: 100dvh;
+  overscroll-behavior: auto;
   user-select: text;
   -webkit-user-select: text;
   touch-action: auto;

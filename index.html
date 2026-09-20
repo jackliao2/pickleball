@@ -17,7 +17,7 @@
   <meta name="theme-color" content="#0c2744" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <link rel="manifest" href="/manifest.webmanifest" />
-  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="stylesheet" href="/css/style.css?v=202609201252" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -38,9 +38,7 @@
 </head>
 <body>
   <div id="page">
-    <aside class="ad-rail" aria-label="Advertisement">
-      <div class="ad-slot"><span>Ad</span></div>
-    </aside>
+    <aside class="ad-rail" aria-hidden="true"></aside>
     <div id="stage">
     <div id="app">
     <canvas id="c"></canvas>
@@ -285,10 +283,8 @@
       <a href="/privacy">Privacy</a>
     </nav>
     </div>
-    <aside class="ad-rail" aria-label="Advertisement">
-      <div class="ad-slot"><span>Ad</span></div>
-    </aside>
+    <aside class="ad-rail" aria-hidden="true"></aside>
   </div>
-  <script type="module" src="/js/game.js"></script>
+  <script type="module" src="/js/game.js?v=202609201252"></script>
 </body>
 </html>

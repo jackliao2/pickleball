@@ -38,22 +38,6 @@ html, body {
   justify-content: center;
   padding-top: 4px;
 }
-.ad-slot {
-  width: 160px;
-  height: min(600px, calc(100dvh - 32px));
-  border-radius: 10px;
-  border: 1px dashed rgba(244, 241, 232, 0.14);
-  background: rgba(255, 255, 255, 0.03);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.ad-slot span {
-  font-size: 11px;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  opacity: 0.35;
-}
 
 #stage {
   min-width: 0;
@@ -897,7 +881,6 @@ body.menu-open #touch { display: none; }
 
 @media (min-width: 1800px) {
   #page { grid-template-columns: 300px minmax(0, 1fr) 300px; }
-  .ad-slot { width: 300px; }
 
   #menu .card,
   #over .card,
