@@ -817,6 +817,12 @@ export class Game {
     $("btn-start-match").onclick = () => this.confirmRoster();
     $("btn-random-look").onclick = () => this.rerollLook("you");
     $("btn-random-look-opp").onclick = () => this.rerollLook("opp");
+    $("btn-tune").onclick = () => {
+      const card = $("btn-tune").closest(".roster-card");
+      const on = card.classList.toggle("tuning");
+      $("btn-tune").setAttribute("aria-expanded", String(on));
+      $("btn-tune").textContent = on ? "Hide stats & venue" : "Tune stats & venue";
+    };
     $("btn-random-venue")?.addEventListener("click", () => this.randomVenue());
     $("btn-random-venue-roster")?.addEventListener("click", () => this.randomVenue());
     this.renderVenuePicks();

@@ -19,7 +19,7 @@
   <link rel="icon" href="/favicon.ico" sizes="32x32" />
   <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
   <link rel="manifest" href="/manifest.webmanifest" />
-  <link rel="stylesheet" href="/css/style.css?v=202609202000" />
+  <link rel="stylesheet" href="/css/style.css?v=202609202100" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -181,6 +181,7 @@
 
     <div id="roster" class="overlay" hidden>
       <div class="card roster-card">
+        <div class="roster-body">
         <div class="roster-top">
           <div>
             <p class="kicker">Build the match</p>
@@ -188,7 +189,7 @@
           </div>
           <p class="lede">36 points each. Random kit until you like the look.</p>
         </div>
-        <div class="venue-bar">
+        <div class="venue-bar" id="roster-venue">
           <div class="venue-head">
             <span>Venue</span>
             <button type="button" class="btn ghost" id="btn-random-venue-roster">Random</button>
@@ -205,26 +206,36 @@
           </div>
         </div>
         <div class="roster-grid">
-          <div class="kit">
-            <canvas id="look-preview" width="200" height="260"></canvas>
-            <button type="button" class="btn" id="btn-random-look">Random kit</button>
+          <div class="side">
+            <div class="kit">
+              <canvas id="look-preview" width="200" height="260"></canvas>
+              <button type="button" class="btn" id="btn-random-look">Random kit</button>
+            </div>
+            <div class="tune">
+              <div class="build-head">
+                <h3>You</h3>
+                <span class="budget" id="budget-you">36 / 36</span>
+              </div>
+              <div class="presets" id="presets-you"></div>
+              <div class="stat-list" id="stats-you"></div>
+            </div>
           </div>
-          <div class="kit">
-            <canvas id="look-preview-opp" width="200" height="260"></canvas>
-            <button type="button" class="btn" id="btn-random-look-opp">Random kit</button>
+          <div class="side">
+            <div class="kit">
+              <canvas id="look-preview-opp" width="200" height="260"></canvas>
+              <button type="button" class="btn" id="btn-random-look-opp">Random kit</button>
+            </div>
+            <div class="tune">
+              <div class="build-head">
+                <h3 id="opp-label">Opponent</h3>
+                <span class="budget" id="budget-opp">36 / 36</span>
+              </div>
+              <div class="presets" id="presets-opp"></div>
+              <div class="stat-list" id="stats-opp"></div>
+            </div>
           </div>
-          <div class="build-head">
-            <h3>You</h3>
-            <span class="budget" id="budget-you">36 / 36</span>
-          </div>
-          <div class="build-head">
-            <h3 id="opp-label">Opponent</h3>
-            <span class="budget" id="budget-opp">36 / 36</span>
-          </div>
-          <div class="presets" id="presets-you"></div>
-          <div class="presets" id="presets-opp"></div>
-          <div class="stat-list" id="stats-you"></div>
-          <div class="stat-list" id="stats-opp"></div>
+        </div>
+        <button type="button" class="btn ghost tune-toggle" id="btn-tune" aria-expanded="false">Tune stats &amp; venue</button>
         </div>
         <div class="roster-actions">
           <button type="button" class="btn primary" id="btn-start-match">Start match</button>
@@ -333,11 +344,11 @@
         <a href="/privacy">Privacy</a>
         <a href="mailto:info@vspickleball.com">Contact</a>
       </nav>
-      <p class="foot-note">© 2026 VS Pickleball · vspickleball.com. A free online pickleball game for entertainment. Independent project, not affiliated with or endorsed by USA Pickleball, the PPA, MLP, APP, or any paddle brand, club, or tour. Court dimensions and rules are modelled on the sport for gameplay and are not an official rulebook. Runs in your browser; no download, no account.</p>
+      <p class="foot-note">© 2026 VS Pickleball · Free online pickleball game for entertainment. Independent project, not affiliated with USA Pickleball, PPA, MLP, APP or any brand or tour. Rules modelled on the sport, not an official rulebook.</p>
     </footer>
     </div>
     <aside class="ad-rail" aria-hidden="true"></aside>
   </div>
-  <script type="module" src="/js/game.js?v=202609201900"></script>
+  <script type="module" src="/js/game.js?v=202609202100"></script>
 </body>
 </html>
