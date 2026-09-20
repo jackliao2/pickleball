@@ -792,7 +792,9 @@ h3 { font-size: 15px; letter-spacing: 0.12em; text-transform: uppercase; margin:
 }
 .menu-links a { color: var(--paper); text-decoration: none; }
 .menu-links a:hover { color: var(--yellow); }
-.seo-blurb { margin: 18px 0 0; padding-top: 14px; border-top: 1px solid var(--line); color: rgba(244,241,232,0.7); font-size: 13px; line-height: 1.5; }
+#menu { flex-direction: column; justify-content: flex-start; }
+#menu .card { margin-top: auto; }
+.seo-blurb { width: min(440px, 100%); margin: 14px 0 auto; padding: 14px 6px 0; border-top: 1px solid var(--line); color: rgba(244,241,232,0.7); font-size: 13px; line-height: 1.5; }
 .seo-blurb h2 { font-size: 15px; line-height: 1.25; margin: 0 0 6px; letter-spacing: 0; }
 .seo-blurb p { margin: 0 0 8px; }
 .seo-blurb a { color: var(--paper); text-decoration: underline; }
@@ -890,7 +892,8 @@ body.menu-open #touch { display: none; }
   #menu .card,
   #over .card,
   #pause .card,
-  #scout .card { width: min(clamp(520px, 30vw, 680px), 100%); }
+  #scout .card,
+  .seo-blurb { width: min(clamp(520px, 30vw, 680px), 100%); }
   #menu .lede { font-size: 16px; }
 
   .sb { min-width: 680px; border-radius: 17px; }
