@@ -669,21 +669,6 @@ body:has(#roster:not([hidden]), #challenge:not([hidden]), #scout:not([hidden])) 
 }
 
 .venue-bar { margin: 8px 0 12px; }
-.venue-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-.venue-head span {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  opacity: 0.55;
-}
-.venue-head .btn { width: auto; margin: 0; padding: 3px 9px; font-size: 10px; opacity: 0.8; }
 .venue-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -703,6 +688,18 @@ body:has(#roster:not([hidden]), #challenge:not([hidden]), #scout:not([hidden])) 
 }
 .venue-grid button:hover { background: rgba(255,255,255,0.09); color: var(--paper); }
 .venue-grid button.on { background: var(--yellow); color: var(--ink); border-color: var(--yellow); }
+/* Random venue: same chip, full row, dashed so it reads as an action not a place. */
+.venue-grid .venue-random {
+  grid-column: 1 / -1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-style: dashed;
+  color: rgba(244, 241, 232, 0.72);
+}
+.venue-grid .venue-random svg { width: 13px; height: 13px; flex-shrink: 0; }
+.venue-grid .venue-random:hover { border-style: solid; }
 @media (min-width: 701px) {
   /* Wide roster card: all eight venues on one row. */
   #roster-venue .venue-grid { grid-template-columns: repeat(8, 1fr); }
@@ -964,7 +961,6 @@ body.menu-open #touch { display: none; }
   #menu .lede { line-height: 1.35; margin-bottom: 10px; }
   #menu .diff { margin-bottom: 8px; }
   #menu .venue-bar { margin: 4px 0 8px; }
-  #menu .venue-head { margin-bottom: 5px; }
   #menu .venue-grid { gap: 4px; }
   #menu .btn { margin-top: 5px; padding: 9px 14px; }
   #menu .hint { margin-top: 7px; }
