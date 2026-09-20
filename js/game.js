@@ -862,7 +862,7 @@ export class Game {
       let dx = clientX - cx;
       let dy = clientY - cy;
       const m = Math.hypot(dx, dy) || 1;
-      const max = r.width * 0.4;
+      const max = r.width * 0.3;
       if (m > max) {
         dx = (dx / m) * max;
         dy = (dy / m) * max;
@@ -2253,8 +2253,8 @@ export class Game {
       if (this.stick.active) {
         // Analog: a small tilt is a small step. Deadzone, then an ease-in curve.
         const m = Math.hypot(this.stick.dx, this.stick.dy);
-        const dead = 0.2;
-        const k = m <= dead ? 0 : Math.min(1, (m - dead) / (1 - dead)) ** 1.7;
+        const dead = 0.12;
+        const k = m <= dead ? 0 : Math.min(1, (m - dead) / (1 - dead)) ** 1.25;
         if (m > 0) {
           ax += (this.stick.dx / m) * k;
           ay -= (this.stick.dy / m) * k;
@@ -2283,7 +2283,7 @@ export class Game {
     const mag = Math.hypot(ax, ay);
     const kit = Math.abs(p.y - (p.side === "near" ? 15 : 29)) < 3.2;
     const keyed = isNear && this.keys.size > 0;
-    const throttle = stickMag > 0 && !keyed ? Math.max(0.28, stickMag) * 0.88 : 1;
+    const throttle = stickMag > 0 && !keyed ? Math.max(0.45, stickMag) : 1;
     const sp = p.speed * (kit ? 1.28 : 1) * (p.charging ? 0.4 : 1) * throttle;
     p.vx = (ax / mag) * sp;
     p.vy = (ay / mag) * sp;
@@ -3129,6 +3129,9 @@ export class Game {
   shouldShowAim(p) {
     if (!this.isHuman(p)) return false;
     if (p.charging) return true;
+    // On a phone the stick is always moving, so a pip that chases every nudge
+    // is just noise. Show it only while the swing is held.
+    if (this.isTouchInput() && p === this.near) return false;
     const { ax, ay } = this.aimAxes(p);
     return Math.abs(ax) > 0.14 || Math.abs(ay) > 0.14;
   }
@@ -3143,7 +3146,8 @@ export class Game {
     ctx.translate(pt.sx, pt.sy);
     ctx.scale(1, 0.42);
     ctx.beginPath();
-    ctx.arc(0, 0, 12 * pt.s, 0, TAU);
+    const touch = this.isTouchInput();
+    ctx.arc(0, 0, (touch ? 9 : 12) * pt.s, 0, TAU);
     const attack = kind === "speedup" || kind === "smash";
     ctx.fillStyle = attack ? "rgba(228,90,67,0.42)" : "rgba(212,225,87,0.5)";
     ctx.fill();
