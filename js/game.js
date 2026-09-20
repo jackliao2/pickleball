@@ -912,14 +912,20 @@ export class Game {
     // canvas does not make the action look miniature.
     const referenceArea = 1056 * 857;
     this.worldScale = clamp(Math.sqrt((this.w * this.h) / referenceArea), 1, 1.7);
+    // Portrait phones: the court is only a few hundred pixels wide, so shrink
+    // the sprites with the width and flatten the camera so the far court is
+    // not a sliver. Otherwise players tower over a strip of court.
+    this.portrait = this.h > this.w * 1.15;
+    if (this.portrait) this.worldScale = clamp(this.w / 640, 0.58, 1);
     this.canvas.width = Math.floor(this.w * dpr);
     this.canvas.height = Math.floor(this.h * dpr);
     this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     this.view = {
-      top: Math.max(72, this.h * 0.12),
-      bot: this.h - Math.max(52, this.h * 0.07),
-      d0: 42,
-      near: 1.08,
+      top: this.portrait ? Math.max(140, this.h * 0.19) : Math.max(72, this.h * 0.12),
+      bot: this.h - (this.portrait ? Math.max(150, this.h * 0.2) : Math.max(52, this.h * 0.07)),
+      d0: this.portrait ? 60 : 42,
+      near: this.portrait ? 1.0 : 1.08,
+      halfK: this.portrait ? 0.46 : 0.39,
     };
     if (this.match && $("serve-tag")) this.syncHud();
   }
@@ -945,7 +951,7 @@ export class Game {
     const worldScale = this.worldScale || 1;
     const shake = this.shake ? this.shake * (Math.random() - 0.5) : 0;
     const sy = lerp(this.view.bot, this.view.top, t) - z * 13.2 * persp * worldScale + shake;
-    const half = this.w * 0.39 * persp;
+    const half = this.w * this.view.halfK * persp;
     const sx = this.w / 2 + this.camX + ((x - 10) / 10) * half;
     return { sx, sy, s: persp * worldScale };
   }
@@ -956,7 +962,7 @@ export class Game {
     const y = this.yFromCourtT(t);
     const d0 = this.view.d0;
     const persp = this.view.near * (d0 / (d0 + y));
-    const half = this.w * 0.39 * persp;
+    const half = this.w * this.view.halfK * persp;
     const x = 10 + ((sx - this.w / 2 - this.camX) / half) * 10;
     return { x, y };
   }

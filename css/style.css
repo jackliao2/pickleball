@@ -1011,3 +1011,9 @@ body.menu-open #touch { display: none; }
   #knob { width: 48px; height: 48px; left: 30px; top: 30px; }
   #btn-swing { width: 96px; height: 96px; font-size: 13px; }
 }
+
+/* Portrait phones: the court ends above the touch controls, so park the toast
+   in the near kitchen instead of over the player. */
+@media (max-width: 700px) and (orientation: portrait) {
+  #toast { bottom: 44%; font-size: 15px; }
+}
