@@ -677,13 +677,13 @@ body:has(#roster:not([hidden]), #challenge:not([hidden]), #scout:not([hidden])) 
   margin-bottom: 8px;
 }
 .venue-head span {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  opacity: 0.75;
+  opacity: 0.55;
 }
-.venue-head .btn { width: auto; margin: 0; padding: 4px 10px; font-size: 11px; }
+.venue-head .btn { width: auto; margin: 0; padding: 3px 9px; font-size: 10px; opacity: 0.8; }
 .venue-rows { display: grid; gap: 6px; }
 .venue-row {
   display: grid;
@@ -692,11 +692,11 @@ body:has(#roster:not([hidden]), #challenge:not([hidden]), #scout:not([hidden])) 
   gap: 8px;
 }
 .venue-row > span {
-  font-size: 10px;
+  font-size: 9.5px;
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  opacity: 0.5;
+  opacity: 0.4;
 }
 .venue-grid { display: flex; gap: 5px; }
 .venue-grid button {
@@ -705,12 +705,12 @@ body:has(#roster:not([hidden]), #challenge:not([hidden]), #scout:not([hidden])) 
   flex: 1 1 0;
   min-width: 0;
   max-width: 110px; /* wide cards (roster): keep chips compact, left-aligned */
-  font: 650 11px Outfit, sans-serif;
-  color: var(--paper);
-  background: rgba(255,255,255,0.06);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 7px 4px 9px;
+  font: 600 10.5px Outfit, sans-serif;
+  color: rgba(244, 241, 232, 0.85);
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(244, 241, 232, 0.11);
+  border-radius: 7px;
+  padding: 6px 4px 8px;
   cursor: pointer;
   text-align: center;
   white-space: nowrap;
@@ -726,7 +726,7 @@ body:has(#roster:not([hidden]), #challenge:not([hidden]), #scout:not([hidden])) 
   background: linear-gradient(90deg, var(--sky), var(--court));
   opacity: 0.85;
 }
-.venue-grid button:hover { background: rgba(255,255,255,0.1); }
+.venue-grid button:hover { background: rgba(255,255,255,0.09); color: var(--paper); }
 .venue-grid button.on { background: var(--yellow); color: var(--ink); border-color: var(--yellow); }
 .venue-grid button.on::after { opacity: 1; }
 .roster-top .kicker { margin-bottom: 4px; }
@@ -819,6 +819,17 @@ h3 { font-size: 15px; letter-spacing: 0.12em; text-transform: uppercase; margin:
   border-color: var(--yellow);
 }
 .btn.ghost { background: transparent; }
+/* Featured mode: outlined in the accent, with a one-line pitch under the label. */
+.btn.featured { border-color: rgba(212, 225, 87, 0.45); background: rgba(212, 225, 87, 0.07); }
+.btn.featured:hover { border-color: var(--yellow); background: rgba(212, 225, 87, 0.13); }
+.btn-sub {
+  display: block;
+  margin-top: 3px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  color: rgba(244, 241, 232, 0.66);
+}
 .btn:hover { filter: brightness(1.08); }
 
 #menu { flex-direction: column; justify-content: flex-start; }
@@ -1055,6 +1066,7 @@ body.menu-open #touch { display: none; }
   h1 { font-size: 52px; }
   .keys { display: none; }
   /* Phone menu: keep the primary Start button inside the first screen. */
+  #menu .btn-sub { font-size: 10.5px; }
   #menu .kicker { font-size: 10.5px; letter-spacing: 0.08em; margin-bottom: 6px; white-space: nowrap; }
   #menu .kicker-more { display: none; }
   #menu h1 { margin-bottom: 8px; }
