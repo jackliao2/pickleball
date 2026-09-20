@@ -984,6 +984,11 @@ body.menu-open #touch { display: none; }
   .site-foot { padding: 8px 12px 10px; }
   body.game-open .site-foot { display: none; }
 }
+@media (max-width: 420px) {
+  /* Small phones: keep the six footer links on one line. */
+  .foot-links { gap: 4px 11px; font-size: 12px; }
+  .foot-note { font-size: 10px; }
+}
 
 @media (max-height: 600px) {
   .site-foot { display: none; }
