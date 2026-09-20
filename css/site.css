@@ -102,6 +102,9 @@ body.docs {
 }
 
 .docs-shell strong { color: #fff; font-weight: 700; }
+.docs-shell p a, .docs-shell li a, .docs-shell dd a { color: var(--paper); text-decoration: underline; text-underline-offset: 2px; }
+.docs-shell p a:hover, .docs-shell li a:hover, .docs-shell dd a:hover { color: var(--yellow); }
+.docs-shell .site-foot { text-align: left; }
 
 .docs-meta {
   font-size: 13px;
@@ -129,27 +132,19 @@ body.docs {
 }
 
 .site-foot {
-  grid-column: 1 / -1;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 18px;
-  justify-content: center;
-  align-items: center;
-  padding: 4px 8px 2px;
+  margin-top: 48px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
   font-size: 13px;
-  font-weight: 600;
 }
-
-.site-foot a {
-  color: rgba(244, 241, 232, 0.7);
-  text-decoration: none;
-}
-
+.foot-links { display: flex; flex-wrap: wrap; gap: 8px 18px; font-weight: 600; margin-bottom: 10px; }
+.foot-note { margin: 0; font-size: 12px; line-height: 1.5; opacity: 0.55; }
+.site-foot a { color: rgba(244, 241, 232, 0.7); text-decoration: none; }
 .site-foot a:hover { color: var(--yellow); }
-
-@media (max-width: 1100px) {
-  .site-foot { padding: 10px 12px 14px; }
-}
+.quick-rules { padding-left: 22px; margin: 0 0 12px; }
+.quick-rules li { margin: 0 0 6px; }
+.faq dt { font-weight: 600; color: rgba(244,241,232,0.9); margin: 12px 0 2px; }
+.faq dd { margin: 0; }
 
 .docs-nav .brand {
   font-family: "Barlow Condensed", Impact, sans-serif;
