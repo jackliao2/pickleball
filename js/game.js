@@ -857,8 +857,8 @@ export class Game {
     };
     const set = (clientX, clientY) => {
       const r = stick.getBoundingClientRect();
-      const cx = r.left + r.width / 2;
-      const cy = r.top + r.height / 2;
+      const cx = this.stick.ox ?? r.left + r.width / 2;
+      const cy = this.stick.oy ?? r.top + r.height / 2;
       let dx = clientX - cx;
       let dy = clientY - cy;
       const m = Math.hypot(dx, dy) || 1;
@@ -875,6 +875,8 @@ export class Game {
     };
     const on = (e) => {
       const t = e.touches ? e.touches[0] : e;
+      this.stick.ox = t.clientX;
+      this.stick.oy = t.clientY;
       this.stick.active = true;
       this.touch = true;
       $("touch").hidden = false;
@@ -883,6 +885,7 @@ export class Game {
     };
     const off = () => {
       this.stick.active = false;
+      this.stick.ox = this.stick.oy = null;
       this.stick.dx = 0;
       this.stick.dy = 0;
       centerKnob();
@@ -2250,8 +2253,8 @@ export class Game {
       if (this.stick.active) {
         // Analog: a small tilt is a small step. Deadzone, then an ease-in curve.
         const m = Math.hypot(this.stick.dx, this.stick.dy);
-        const dead = 0.16;
-        const k = m <= dead ? 0 : Math.min(1, (m - dead) / (1 - dead)) ** 1.5;
+        const dead = 0.2;
+        const k = m <= dead ? 0 : Math.min(1, (m - dead) / (1 - dead)) ** 1.7;
         if (m > 0) {
           ax += (this.stick.dx / m) * k;
           ay -= (this.stick.dy / m) * k;
@@ -2280,7 +2283,7 @@ export class Game {
     const mag = Math.hypot(ax, ay);
     const kit = Math.abs(p.y - (p.side === "near" ? 15 : 29)) < 3.2;
     const keyed = isNear && this.keys.size > 0;
-    const throttle = stickMag > 0 && !keyed ? Math.max(0.3, stickMag) : 1;
+    const throttle = stickMag > 0 && !keyed ? Math.max(0.28, stickMag) * 0.88 : 1;
     const sp = p.speed * (kit ? 1.28 : 1) * (p.charging ? 0.4 : 1) * throttle;
     p.vx = (ax / mag) * sp;
     p.vy = (ay / mag) * sp;
@@ -3384,16 +3387,34 @@ export class Game {
 
   drawLanding(ctx) {
     const land = this.predictLanding(this.ball);
-    const p = this.project(land.x, land.y, 0);
+    const touch = this.isTouchInput();
+    // On a phone the far-side marker darts around faster than you can move and
+    // just pulls the eye; only show where the ball will land on your side.
+    if (touch && this.mode !== "p2" && (land.y > NET_Y || this.ball.vy > 0)) {
+      this.landSmooth = null;
+      return;
+    }
+    let lx = land.x;
+    let ly = land.y;
+    if (touch) {
+      const s = this.landSmooth;
+      if (s && dist(s.x, s.y, land.x, land.y) < 6) {
+        lx = lerp(s.x, land.x, 0.25);
+        ly = lerp(s.y, land.y, 0.25);
+      }
+      this.landSmooth = { x: lx, y: ly };
+    }
+    const p = this.project(lx, ly, 0);
     const ok = inCourt(land.x, land.y);
+    const a = touch ? 0.6 : 1;
     ctx.save();
     ctx.translate(p.sx, p.sy);
     ctx.scale(1, 0.42);
     ctx.beginPath();
     ctx.arc(0, 0, 16 * p.s, 0, TAU);
-    ctx.fillStyle = ok ? "rgba(212,225,87,0.28)" : "rgba(228,90,67,0.3)";
+    ctx.fillStyle = ok ? `rgba(212,225,87,${0.28 * a})` : `rgba(228,90,67,${0.3 * a})`;
     ctx.fill();
-    ctx.strokeStyle = ok ? "rgba(212,225,87,0.9)" : "rgba(228,90,67,0.9)";
+    ctx.strokeStyle = ok ? `rgba(212,225,87,${0.9 * a})` : `rgba(228,90,67,${0.9 * a})`;
     ctx.lineWidth = 2;
     ctx.stroke();
     ctx.restore();

@@ -1022,5 +1022,6 @@ body.menu-open #touch { display: none; }
 /* Portrait phones: the court ends above the touch controls, so park the toast
    in the near kitchen instead of over the player. */
 @media (max-width: 700px) and (orientation: portrait) {
-  #toast { bottom: 44%; font-size: 15px; }
+  /* Keep the toast out of the play area: tuck it under the HUD chips, small and translucent. */
+  #toast { bottom: auto; top: 134px; font-size: 13px; padding: 5px 12px; background: rgba(7, 24, 44, 0.55); max-width: 80vw; }
 }
