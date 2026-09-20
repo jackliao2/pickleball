@@ -882,8 +882,15 @@ export class Game {
     };
     const on = (e) => {
       const t = e.touches ? e.touches[0] : e;
-      this.stick.ox = t.clientX;
-      this.stick.oy = t.clientY;
+      // Floating origin, but pulled inward so a full deflection in every
+      // direction stays on screen. Without this, a thumb landing on the
+      // left/bottom edge of the pad could only travel a few px further
+      // left/down (and iOS eats swipes that start at the screen edge).
+      const r = stick.getBoundingClientRect();
+      const max = r.width * 0.3;
+      const margin = max + 24;
+      this.stick.ox = Math.min(Math.max(t.clientX, margin), window.innerWidth - margin);
+      this.stick.oy = Math.min(Math.max(t.clientY, margin), window.innerHeight - margin);
       this.stick.active = true;
       this.touch = true;
       $("touch").hidden = false;

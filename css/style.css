@@ -1010,8 +1010,8 @@ body.menu-open #touch { display: none; }
   .coach p { font-size: 11px; }
   .chips { gap: 4px; }
   #stick {
-    left: max(12px, env(safe-area-inset-left));
-    bottom: max(12px, env(safe-area-inset-bottom));
+    left: max(22px, env(safe-area-inset-left));
+    bottom: max(22px, env(safe-area-inset-bottom));
     width: 100px;
     height: 100px;
   }
