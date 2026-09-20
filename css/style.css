@@ -684,51 +684,29 @@ body:has(#roster:not([hidden]), #challenge:not([hidden]), #scout:not([hidden])) 
   opacity: 0.55;
 }
 .venue-head .btn { width: auto; margin: 0; padding: 3px 9px; font-size: 10px; opacity: 0.8; }
-.venue-rows { display: grid; gap: 6px; }
-.venue-row {
+.venue-grid {
   display: grid;
-  grid-template-columns: 62px 1fr;
-  align-items: center;
-  gap: 8px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 5px;
 }
-.venue-row > span {
-  font-size: 9.5px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  opacity: 0.4;
-}
-.venue-grid { display: flex; gap: 5px; }
 .venue-grid button {
-  position: relative;
-  overflow: hidden;
-  flex: 1 1 0;
   min-width: 0;
-  max-width: 110px; /* wide cards (roster): keep chips compact, left-aligned */
-  font: 600 10.5px Outfit, sans-serif;
-  color: rgba(244, 241, 232, 0.85);
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(244, 241, 232, 0.11);
-  border-radius: 7px;
-  padding: 6px 4px 8px;
+  font: 600 11px Outfit, sans-serif;
+  color: rgba(244, 241, 232, 0.88);
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(244, 241, 232, 0.12);
+  border-radius: 8px;
+  padding: 7px 4px;
   cursor: pointer;
   text-align: center;
   white-space: nowrap;
 }
-/* Sky-to-court stripe: each chip previews its venue's palette. */
-.venue-grid button::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 3px;
-  background: linear-gradient(90deg, var(--sky), var(--court));
-  opacity: 0.85;
-}
 .venue-grid button:hover { background: rgba(255,255,255,0.09); color: var(--paper); }
 .venue-grid button.on { background: var(--yellow); color: var(--ink); border-color: var(--yellow); }
-.venue-grid button.on::after { opacity: 1; }
+@media (min-width: 701px) {
+  /* Wide roster card: all eight venues on one row. */
+  #roster-venue .venue-grid { grid-template-columns: repeat(8, 1fr); }
+}
 .roster-top .kicker { margin-bottom: 4px; }
 @media (max-width: 700px) {
   /* Phone roster: kits side by side, Start always on screen; stats + venue fold away. */
@@ -819,17 +797,6 @@ h3 { font-size: 15px; letter-spacing: 0.12em; text-transform: uppercase; margin:
   border-color: var(--yellow);
 }
 .btn.ghost { background: transparent; }
-/* Featured mode: outlined in the accent, with a one-line pitch under the label. */
-.btn.featured { border-color: rgba(212, 225, 87, 0.45); background: rgba(212, 225, 87, 0.07); }
-.btn.featured:hover { border-color: var(--yellow); background: rgba(212, 225, 87, 0.13); }
-.btn-sub {
-  display: block;
-  margin-top: 3px;
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.01em;
-  color: rgba(244, 241, 232, 0.66);
-}
 .btn:hover { filter: brightness(1.08); }
 
 #menu { flex-direction: column; justify-content: flex-start; }
@@ -998,7 +965,7 @@ body.menu-open #touch { display: none; }
   #menu .diff { margin-bottom: 8px; }
   #menu .venue-bar { margin: 4px 0 8px; }
   #menu .venue-head { margin-bottom: 5px; }
-  #menu .venue-rows { gap: 4px; }
+  #menu .venue-grid { gap: 4px; }
   #menu .btn { margin-top: 5px; padding: 9px 14px; }
   #menu .hint { margin-top: 7px; }
 }
@@ -1066,7 +1033,6 @@ body.menu-open #touch { display: none; }
   h1 { font-size: 52px; }
   .keys { display: none; }
   /* Phone menu: keep the primary Start button inside the first screen. */
-  #menu .btn-sub { font-size: 10.5px; }
   #menu .kicker { font-size: 10.5px; letter-spacing: 0.08em; margin-bottom: 6px; white-space: nowrap; }
   #menu .kicker-more { display: none; }
   #menu h1 { margin-bottom: 8px; }

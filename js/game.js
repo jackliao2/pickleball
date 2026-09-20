@@ -623,14 +623,11 @@ export class Game {
 
   renderVenuePicks() {
     document.querySelectorAll(".venue-grid").forEach((grid) => {
-      const kind = grid.dataset.kind;
       grid.innerHTML = "";
-      VENUES.filter((v) => v.kind === kind).forEach((v) => {
+      VENUES.forEach((v) => {
         const b = document.createElement("button");
         b.type = "button";
         b.textContent = v.name;
-        b.style.setProperty("--sky", v.sky[0]);
-        b.style.setProperty("--court", v.court[1]);
         b.classList.toggle("on", this.venue?.id === v.id);
         b.onclick = () => this.setVenue(v.id);
         grid.appendChild(b);
