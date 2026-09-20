@@ -19,7 +19,7 @@
   <link rel="icon" href="/favicon.ico" sizes="32x32" />
   <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
   <link rel="manifest" href="/manifest.webmanifest" />
-  <link rel="stylesheet" href="/css/style.css?v=202609202100" />
+  <link rel="stylesheet" href="/css/style.css?v=202609202200" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -270,12 +270,17 @@
     </div>
 
     <div id="challenge" class="overlay" hidden>
-      <div class="card wide">
+      <div class="card wide challenge-card">
+        <div class="roster-body">
         <p class="kicker">Single elimination</p>
         <h2>Tournament</h2>
         <p class="lede" id="challenge-lede">Climb the map. Weak to strong. Tap a round to scout the opponent.</p>
         <div id="tourney-map" class="tourney-map"></div>
-        <button type="button" class="btn ghost" id="btn-challenge-back">Back</button>
+        </div>
+        <div class="roster-actions">
+          <button type="button" class="btn primary" id="btn-challenge-play">Next match</button>
+          <button type="button" class="btn ghost" id="btn-challenge-back">Back</button>
+        </div>
       </div>
     </div>
 
@@ -349,6 +354,6 @@
     </div>
     <aside class="ad-rail" aria-hidden="true"></aside>
   </div>
-  <script type="module" src="/js/game.js?v=202609202100"></script>
+  <script type="module" src="/js/game.js?v=202609202200"></script>
 </body>
 </html>

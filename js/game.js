@@ -810,6 +810,7 @@ export class Game {
     $("btn-doubles").onclick = () => this.openRoster("doubles");
     $("btn-challenge").onclick = () => this.openChallenge();
     $("btn-challenge-back").onclick = () => this.closeChallenge();
+    $("btn-challenge-play").onclick = () => this.openScout(Math.min(this.gauntletCleared(), TOURNAMENT.length - 1));
     $("btn-next-challenge").onclick = () => this.playNextChallenge();
     $("btn-scout-play").onclick = () => this.startChallenge(this.scoutIndex);
     $("btn-scout-back").onclick = () => this.closeScout();
@@ -1649,6 +1650,9 @@ export class Game {
       map.appendChild(btn);
     });
     const n = unlocked;
+    const next = TOURNAMENT[Math.min(n, TOURNAMENT.length - 1)];
+    $("btn-challenge-play").textContent = n >= TOURNAMENT.length ? `Replay ${next.round} · ${next.name}` : `Play ${next.round} · ${next.name}`;
+    map.querySelector(".map-node.now")?.scrollIntoView({ block: "nearest" });
     $("challenge-lede").textContent =
       n >= TOURNAMENT.length
         ? "Champion. Tap any round to scout and replay."
