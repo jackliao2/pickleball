@@ -866,10 +866,22 @@ h3 { font-size: 15px; letter-spacing: 0.12em; text-transform: uppercase; margin:
   pointer-events: none;
   z-index: 4;
 }
-#stick {
+/* The whole lower-left area is the stick's hit zone: the pad jumps to
+   wherever the thumb lands, so you never have to find the knob first. */
+#stick-zone {
   pointer-events: auto;
   touch-action: none;
   -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 55%;
+  height: 62%;
+}
+#stick {
+  pointer-events: none;
   position: absolute;
   left: max(18px, env(safe-area-inset-left));
   bottom: max(18px, env(safe-area-inset-bottom));
@@ -879,6 +891,7 @@ h3 { font-size: 15px; letter-spacing: 0.12em; text-transform: uppercase; margin:
   background: rgba(7, 24, 44, 0.35);
   border: 1px solid var(--line);
 }
+#stick-zone #stick.floating { left: var(--sx); top: var(--sy); bottom: auto; transform: translate(-50%, -50%); }
 #knob {
   position: absolute;
   width: 54px;

@@ -854,6 +854,7 @@ export class Game {
 
   bindTouch() {
     const stick = $("stick");
+    const zone = $("stick-zone");
     const knob = $("knob");
     const swing = $("btn-swing");
     const centerKnob = () => {
@@ -869,7 +870,7 @@ export class Game {
       let dx = clientX - cx;
       let dy = clientY - cy;
       const m = Math.hypot(dx, dy) || 1;
-      const max = r.width * 0.3;
+      const max = r.width * 0.36;
       if (m > max) {
         dx = (dx / m) * max;
         dy = (dy / m) * max;
@@ -887,10 +888,14 @@ export class Game {
       // left/bottom edge of the pad could only travel a few px further
       // left/down (and iOS eats swipes that start at the screen edge).
       const r = stick.getBoundingClientRect();
-      const max = r.width * 0.3;
-      const margin = max + 24;
+      const margin = r.width / 2 + 16;
       this.stick.ox = Math.min(Math.max(t.clientX, margin), window.innerWidth - margin);
       this.stick.oy = Math.min(Math.max(t.clientY, margin), window.innerHeight - margin);
+      // Park the pad under the thumb for this touch.
+      const z = zone.getBoundingClientRect();
+      stick.style.setProperty("--sx", `${this.stick.ox - z.left}px`);
+      stick.style.setProperty("--sy", `${this.stick.oy - z.top}px`);
+      stick.classList.add("floating");
       this.stick.active = true;
       this.touch = true;
       $("touch").hidden = false;
@@ -902,21 +907,27 @@ export class Game {
       this.stick.ox = this.stick.oy = null;
       this.stick.dx = 0;
       this.stick.dy = 0;
+      stick.classList.remove("floating");
       centerKnob();
     };
-    stick.addEventListener("pointerdown", (e) => {
+    zone.addEventListener("pointerdown", (e) => {
+      if (this.stick.active) return;
       e.preventDefault();
-      stick.setPointerCapture(e.pointerId);
+      zone.setPointerCapture(e.pointerId);
+      this.stick.pid = e.pointerId;
       on(e);
     });
-    stick.addEventListener("pointermove", (e) => {
-      if (!this.stick.active) return;
+    zone.addEventListener("pointermove", (e) => {
+      if (!this.stick.active || e.pointerId !== this.stick.pid) return;
       e.preventDefault();
       set(e.clientX, e.clientY);
     });
-    stick.addEventListener("pointerup", off);
-    stick.addEventListener("pointercancel", off);
-    stick.addEventListener("lostpointercapture", off);
+    const offIf = (e) => {
+      if (e.pointerId === this.stick.pid) off();
+    };
+    zone.addEventListener("pointerup", offIf);
+    zone.addEventListener("pointercancel", offIf);
+    zone.addEventListener("lostpointercapture", offIf);
     swing.addEventListener("pointerdown", (e) => {
       e.preventDefault();
       swing.setPointerCapture(e.pointerId);
@@ -2270,8 +2281,8 @@ export class Game {
       if (this.stick.active) {
         // Analog: a small tilt is a small step. Deadzone, then an ease-in curve.
         const m = Math.hypot(this.stick.dx, this.stick.dy);
-        const dead = 0.12;
-        const k = m <= dead ? 0 : Math.min(1, (m - dead) / (1 - dead)) ** 1.25;
+        const dead = 0.08;
+        const k = m <= dead ? 0 : Math.min(1, (m - dead) / (1 - dead));
         if (m > 0) {
           ax += (this.stick.dx / m) * k;
           ay -= (this.stick.dy / m) * k;
@@ -2300,7 +2311,7 @@ export class Game {
     const mag = Math.hypot(ax, ay);
     const kit = Math.abs(p.y - (p.side === "near" ? 15 : 29)) < 3.2;
     const keyed = isNear && this.keys.size > 0;
-    const throttle = stickMag > 0 && !keyed ? Math.max(0.45, stickMag) : 1;
+    const throttle = stickMag > 0 && !keyed ? Math.max(0.6, stickMag) : 1;
     const sp = p.speed * (kit ? 1.28 : 1) * (p.charging ? 0.4 : 1) * throttle;
     p.vx = (ax / mag) * sp;
     p.vy = (ay / mag) * sp;
