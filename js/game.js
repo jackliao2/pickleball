@@ -341,6 +341,33 @@ class Sfx {
     this.master.gain.value = 0.22;
     this.master.connect(this.ctx.destination);
   }
+  /**
+   * iOS only starts an AudioContext from inside a touchend/click, and Web Audio
+   * follows the ringer switch until an <audio> element has played. Call from a
+   * gesture handler; safe to call repeatedly.
+   */
+  unlock() {
+    this.ensure();
+    if (!this.ctx) return;
+    if (this.ctx.state === "suspended") this.ctx.resume().catch(() => {});
+    if (!this.unlocked) {
+      const buf = this.ctx.createBuffer(1, 1, 22050);
+      const src = this.ctx.createBufferSource();
+      src.buffer = buf;
+      src.connect(this.ctx.destination);
+      src.start(0);
+      try {
+        const a = new Audio(
+          "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAIlYAAESsAAACABAAZGF0YQAAAAA="
+        );
+        a.setAttribute("playsinline", "");
+        a.volume = 0.01;
+        const p = a.play();
+        if (p && p.catch) p.catch(() => {});
+      } catch {}
+      this.unlocked = this.ctx.state === "running";
+    }
+  }
   beep(freq, dur, type, vol, slide) {
     if (this.muted) return;
     this.ensure();
@@ -835,7 +862,7 @@ export class Game {
       let dx = clientX - cx;
       let dy = clientY - cy;
       const m = Math.hypot(dx, dy) || 1;
-      const max = r.width * 0.32;
+      const max = r.width * 0.4;
       if (m > max) {
         dx = (dx / m) * max;
         dy = (dy / m) * max;
@@ -898,6 +925,13 @@ export class Game {
       },
       { once: true }
     );
+    const unlockAudio = () => {
+      this.sfx.unlock();
+      if (this.sfx.ctx && this.sfx.ctx.state === "running" && this.sfx.unlocked) {
+        for (const ev of ["touchend", "pointerup", "click", "keydown"]) window.removeEventListener(ev, unlockAudio, true);
+      }
+    };
+    for (const ev of ["touchend", "pointerup", "click", "keydown"]) window.addEventListener(ev, unlockAudio, true);
   }
 
   resize() {
@@ -1030,6 +1064,7 @@ export class Game {
   inReach(p, x, y, z) {
     let reach = p.reachFt || 3.3;
     if (this.isCpuSide(p) && !this.demo && !this.returningServe(p)) reach *= DIFF[this.diff]?.reach ?? 1;
+    else if (p === this.near && this.touch && this.isHuman(p)) reach *= 1.15;
     const dx = x - p.x;
     const dy = y - p.y;
     const forward = p.side === "near" ? dy : -dy;
@@ -1444,7 +1479,7 @@ export class Game {
       {
         title: "Respect the two-bounce rule",
         copy: touch
-          ? "Let the opponent's return bounce on your side, then tap SWING to send it back."
+          ? "Let the return bounce, then tap SWING. Not sure of the timing? Hold SWING and it fires itself when the ball arrives."
           : "Let the opponent's return bounce on your side, then tap Space to send it back.",
       },
     ];
@@ -1942,9 +1977,14 @@ export class Game {
     if (!b.live) return;
     const sideOk = p.side === "near" ? b.y <= NET_Y + 0.55 : b.y >= NET_Y - 0.55;
     if (!sideOk || !this.canContact(p, b)) {
+      const touchEarly = p === this.near && this.isTouchInput() && this.incoming(p);
       if (this.needsBounce(p)) {
         this.pendingHit = { p, power, until: this.time + 0.7 };
         if (p === this.near && this.screen === "play") this.toast("Let it bounce");
+      } else if (touchEarly) {
+        // On a phone the tap lands a beat early more often than not; hold the
+        // swing for a moment and fire it when the ball arrives.
+        this.pendingHit = { p, power, until: this.time + 0.55 };
       } else if (p === this.near && this.screen === "play") {
         this.toast("Whiff");
       }
@@ -2200,6 +2240,7 @@ export class Game {
   steer(p, dt, isNear) {
     let ax = 0,
       ay = 0;
+    let stickMag = 0;
     const arrowsForP1 = isNear && this.mode !== "p2";
     if (isNear) {
       if (this.keys.has("KeyA") || (arrowsForP1 && this.keys.has("ArrowLeft"))) ax -= 1;
@@ -2207,8 +2248,15 @@ export class Game {
       if (this.keys.has("KeyW") || (arrowsForP1 && this.keys.has("ArrowUp"))) ay += 1;
       if (this.keys.has("KeyS") || (arrowsForP1 && this.keys.has("ArrowDown"))) ay -= 1;
       if (this.stick.active) {
-        ax += this.stick.dx;
-        ay -= this.stick.dy;
+        // Analog: a small tilt is a small step. Deadzone, then an ease-in curve.
+        const m = Math.hypot(this.stick.dx, this.stick.dy);
+        const dead = 0.16;
+        const k = m <= dead ? 0 : Math.min(1, (m - dead) / (1 - dead)) ** 1.5;
+        if (m > 0) {
+          ax += (this.stick.dx / m) * k;
+          ay -= (this.stick.dy / m) * k;
+        }
+        stickMag = k;
       }
     } else {
       if (this.keys.has("ArrowLeft")) ax -= 1;
@@ -2231,7 +2279,9 @@ export class Game {
     }
     const mag = Math.hypot(ax, ay);
     const kit = Math.abs(p.y - (p.side === "near" ? 15 : 29)) < 3.2;
-    const sp = p.speed * (kit ? 1.28 : 1) * (p.charging ? 0.4 : 1);
+    const keyed = isNear && this.keys.size > 0;
+    const throttle = stickMag > 0 && !keyed ? Math.max(0.3, stickMag) : 1;
+    const sp = p.speed * (kit ? 1.28 : 1) * (p.charging ? 0.4 : 1) * throttle;
     p.vx = (ax / mag) * sp;
     p.vy = (ay / mag) * sp;
     p.x += p.vx * dt;
