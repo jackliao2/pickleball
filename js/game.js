@@ -1855,7 +1855,7 @@ export class Game {
     };
     this.syncHud();
     if (this.screen === "play" && this.isDoubles() && this.serverPlayer() === this.nearB) {
-      this.toast("Partner serving");
+      this.toast("Partner serving", true);
     }
   }
 
@@ -2540,7 +2540,7 @@ export class Game {
           b.vx *= 0.82;
           b.vz = Math.max(Math.abs(b.vz) * 0.35, 1.4);
           this.sfx.net();
-          this.toast("Net cord — play on");
+          this.toast("Net cord — play on", true);
         }
       }
 
@@ -2722,7 +2722,7 @@ export class Game {
         this.buzz(18);
       }
       if (!serverWon) {
-        if (this.isDoubles() && this.match.server === "far" && this.match.serverNum === 2) this.toast("Point · second server");
+        if (this.isDoubles() && this.match.server === "far" && this.match.serverNum === 2) this.toast("Point · second server", true);
         else if (this.match.server === "near") this.toast("Point · your serve");
       }
     } else {
@@ -2733,7 +2733,7 @@ export class Game {
     const switchAt = Math.ceil(this.matchTargetScore() / 2);
     if (!this.match.switched && (this.match.near === switchAt || this.match.far === switchAt)) {
       this.match.switched = true;
-      this.toast(`${switchAt} — switch sides`);
+      this.toast(`${switchAt} — switch sides`, true);
     }
     this.syncHud();
     if (highlight && this.tape.length >= 18) {
@@ -2850,7 +2850,7 @@ export class Game {
     this.replay = { frames: this.tape.slice(), i: 0, label };
     this.flash(label, 1.35);
     this.sfx.crowd(1.15);
-    this.toast(this.isTouchInput() ? "Tap to skip" : "SPACE / click to skip");
+    this.toast(this.isTouchInput() ? "Tap to skip" : "SPACE / click to skip", true);
   }
 
   skipReplay() {
@@ -2970,8 +2970,11 @@ export class Game {
     $("banner").classList.add("show");
   }
 
-  toast(text) {
+  /** Small status line. On touch only `important` toasts show; the coaching
+   *  ones ("Let it bounce", "Whiff", serve reminders) just cover the court. */
+  toast(text, important = false) {
     if (this.demo) return;
+    if (!important && this.isTouchInput() && this.screen === "play") return;
     $("toast").textContent = text;
     $("toast").classList.add("show");
     this.toastT = 1.4;
@@ -3028,7 +3031,7 @@ export class Game {
       this.toastT = Math.max(this.toastT, 0.2);
       if (!$("toast").classList.contains("show")) {
         const touch = this.isTouchInput();
-        this.toast(touch ? "Tap or hold SWING to serve underhand" : "Hold SPACE / click to serve underhand");
+        this.toast(touch ? "Tap or hold SWING to serve underhand" : "Hold SPACE / click to serve underhand", true);
       }
     }
 
