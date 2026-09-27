@@ -1043,3 +1043,4 @@ body.menu-open #touch { display: none; }
   /* Keep the toast out of the play area: tuck it under the HUD chips, small and translucent. */
   #toast { bottom: auto; top: 134px; font-size: 13px; padding: 5px 12px; background: rgba(7, 24, 44, 0.55); max-width: 80vw; }
 }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
