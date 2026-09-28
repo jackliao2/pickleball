@@ -33,13 +33,14 @@ html, body {
   align-items: stretch;
 }
 
-.ad-rail {
+.side-rail {
   display: flex;
   justify-content: center;
   padding-top: 4px;
 }
 
 #stage {
+  grid-column: 2;
   min-width: 0;
   min-height: 0;
   display: flex;
@@ -960,7 +961,8 @@ body.menu-open #touch { display: none; }
     gap: 0;
     padding: 0;
   }
-  .ad-rail { display: none; }
+  .side-rail { display: none; }
+  #stage { grid-column: 1; }
   #app {
     border-radius: 0;
     box-shadow: none;
