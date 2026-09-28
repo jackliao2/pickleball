@@ -1,18 +1,24 @@
-// Build a guide page from a spec module. Run: node tools/guide-page.mjs guides/_src/slug.mjs
+// Build a guide page from a spec module. Run: node tools/guide-page.mjs tools/pages/slug.mjs
+// spec.root = true writes /slug.html (a game landing page) instead of /guides/slug.html.
 // The spec exports { slug, title, description, ogTitle, ogDescription, headline, crumb,
 // kicker, h1, meta, body, faq: [[q, a], ...] }. body is raw HTML; faq feeds both
 // the FAQPage schema and the visible "Common questions" list.
 // In-body "play" links should deep-link a mode: /?mode=singles|doubles|2p|tournament,
 // optional &amp;diff=easy|normal|hard and &amp;opp=<preset id> (see Game.applyDeepLink).
-import { writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { resolve } from 'node:path';
 
 const spec = (await import(pathToFileURL(resolve(process.argv[2])).href)).default;
-const url = `https://vspickleball.com/guides/${spec.slug}`;
+const base = spec.root ? '' : 'guides/';
+const url = `https://vspickleball.com/${base}${spec.slug}`;
+const crumbs = spec.root
+  ? [{ name: 'Home', item: 'https://vspickleball.com/' }]
+  : [{ name: 'Guides', item: 'https://vspickleball.com/guides/' }];
 const esc = (s) => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
 const plain = (s) => s.replace(/<[^>]+>/g, '');
 const today = new Date().toISOString().slice(0, 10);
+const stamp = (readFileSync('index.html', 'utf8').match(/style.css?v=(d+)/) || [, today.replace(/-/g, '')])[1];
 
 const schema = {
   '@context': 'https://schema.org',
@@ -23,8 +29,8 @@ const schema = {
       publisher: { '@type': 'Organization', name: 'VS Pickleball', url: 'https://vspickleball.com/' },
       isPartOf: { '@type': 'WebSite', name: 'VS Pickleball', url: 'https://vspickleball.com/' } },
     { '@type': 'BreadcrumbList', itemListElement: [
-      { '@type': 'ListItem', position: 1, name: 'Guides', item: 'https://vspickleball.com/guides/' },
-      { '@type': 'ListItem', position: 2, name: spec.crumb, item: url } ] },
+      ...crumbs.map((c, i) => ({ '@type': 'ListItem', position: i + 1, ...c })),
+      { '@type': 'ListItem', position: crumbs.length + 1, name: spec.crumb, item: url } ] },
     { '@type': 'FAQPage', mainEntity: spec.faq.map(([q, a]) => ({
       '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: plain(a) } })) },
   ],
@@ -58,8 +64,8 @@ const html = `<!DOCTYPE html>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <link rel="icon" href="/favicon.ico" sizes="32x32" />
   <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-  <link rel="stylesheet" href="/css/style.css?v=202609271731" />
-  <link rel="stylesheet" href="/css/site.css?v=202609271731" />
+  <link rel="stylesheet" href="/css/style.css?v=${stamp}" />
+  <link rel="stylesheet" href="/css/site.css?v=${stamp}" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@800&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet" />
@@ -73,11 +79,11 @@ ${JSON.stringify(schema, null, 2)}
       <a class="brand wordmark" href="/" aria-label="VS Pickleball home"><span class="vs">VS</span> Pickleball</a>
       <a class="play" href="/" title="Free online pickleball game">Play</a>
       <a href="/how-to-play">How to play</a>
-      <a class="on" href="/guides/">Guides</a>
+      <a${spec.root ? '' : ' class="on"'} href="/guides/">Guides</a>
       <a href="/about">About</a>
     </nav>
 
-    <p class="docs-kicker"><a href="/guides/">Guides</a> · ${spec.kicker}</p>
+    <p class="docs-kicker">${spec.root ? '<a href="/">Play</a>' : '<a href="/guides/">Guides</a>'} · ${spec.kicker}</p>
     <h1>${spec.h1}</h1>
     <p class="docs-meta">${spec.meta}</p>
 ${spec.body}
@@ -105,5 +111,5 @@ ${spec.next}
 </body>
 </html>
 `;
-writeFileSync(`guides/${spec.slug}.html`, html);
-console.log('wrote', `guides/${spec.slug}.html`, spec.title.length, 'title chars,', spec.description.length, 'desc chars');
+writeFileSync(`${base}${spec.slug}.html`, html);
+console.log('wrote', `${base}${spec.slug}.html`, spec.title.length, 'title chars,', spec.description.length, 'desc chars');

@@ -178,3 +178,10 @@ body.docs {
 .shot img { display: block; width: 100%; height: auto; border-radius: 12px; border: 1px solid var(--line); }
 .shot.phone img { max-width: 300px; margin: 0 auto; }
 .shot figcaption { font-size: 13px; opacity: 0.75; text-align: center; margin: 8px 8px 0; line-height: 1.45; }
+
+.docs-cta { display: inline-block; margin: 4px 0 22px; padding: 12px 22px; border-radius: 999px; background: var(--yellow); color: var(--ink); font-weight: 800; font-size: 16px; text-decoration: none; }
+.docs-cta:hover { filter: brightness(1.06); }
+.docs-table { width: 100%; border-collapse: collapse; margin: 6px 0 22px; font-size: 14px; }
+.docs-table th, .docs-table td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.docs-table th { font-weight: 700; opacity: 0.85; }
+.table-wrap { overflow-x: auto; }
