@@ -518,8 +518,39 @@ export class Game {
     this.syncSoundButton();
     this.resize();
     this.resetPoint(true);
+    this.applyDeepLink();
     this.loop = this.loop.bind(this);
     requestAnimationFrame(this.loop);
+  }
+
+  // /?mode=singles|doubles|2p|tournament[&diff=easy|normal|hard][&opp=<preset>] opens that mode's
+  // setup screen, one tap from play. The tap also unlocks audio, so no autostart.
+  applyDeepLink() {
+    let q;
+    try {
+      q = new URLSearchParams(location.search);
+    } catch {
+      return;
+    }
+    const diff = q.get("diff");
+    if (["easy", "normal", "hard"].includes(diff)) {
+      document.querySelectorAll(".diff button").forEach((b) => b.classList.toggle("on", b.dataset.diff === diff));
+      this.diff = this.menuDiff = diff;
+    }
+    const mode = { singles: "cpu", cpu: "cpu", doubles: "doubles", "2p": "p2", p2: "p2", tournament: "challenge" }[q.get("mode")];
+    if (!mode) return;
+    if (mode === "challenge") this.openChallenge();
+    else this.openRoster(mode);
+    const opp = q.get("opp");
+    if (mode !== "challenge" && Object.hasOwn(PRESETS, opp)) {
+      this.setBuild("opp", PRESETS[opp], opp);
+      this.refreshRoster();
+    }
+    if (typeof gtag === "function") gtag("event", "deep_link", { mode: q.get("mode"), diff: diff || "" });
+  }
+
+  clearDeepLink() {
+    if (location.search) history.replaceState(null, "", location.pathname + location.hash);
   }
 
   makePlayer(side) {
@@ -1300,6 +1331,7 @@ export class Game {
   }
 
   closeRoster() {
+    this.clearDeepLink();
     $("roster").hidden = true;
     $("menu").hidden = false;
   }
@@ -1393,6 +1425,7 @@ export class Game {
   }
 
   toMenu() {
+    this.clearDeepLink();
     if (this.challengeOriginalVenue) this.venue = this.challengeOriginalVenue;
     this.screen = "menu";
     this.demo = true;
@@ -1624,6 +1657,7 @@ export class Game {
   }
 
   closeChallenge() {
+    this.clearDeepLink();
     $("challenge").hidden = true;
     $("menu").hidden = false;
   }

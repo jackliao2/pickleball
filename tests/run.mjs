@@ -47,12 +47,12 @@ function passed(name, detail = "") {
   console.log(`✓ ${name}${detail ? ` · ${detail}` : ""}`);
 }
 
-async function newPage(options = {}) {
+async function newPage(options = {}, path = "") {
   const context = await browser.newContext(options);
   const page = await context.newPage();
   const errors = [];
   page.on("pageerror", (error) => errors.push(String(error)));
-  await page.goto(baseUrl, { waitUntil: "domcontentloaded" });
+  await page.goto(baseUrl + path, { waitUntil: "domcontentloaded" });
   await page.waitForFunction(() => !!window.game);
   return { context, page, errors };
 }
@@ -470,6 +470,34 @@ try {
     assert.deepEqual(errors, []);
     passed("tournament run", "scouting, AI identities, win upgrade, venue progression, loss resets run");
     await context.close();
+  }
+
+  {
+    const cases = [
+      ["?mode=doubles", "#roster", "doubles", "normal"],
+      ["?mode=2p", "#roster", "p2", "normal"],
+      ["?mode=singles&diff=hard", "#roster", "cpu", "hard"],
+      ["?mode=tournament", "#challenge", null, "normal"],
+      ["?mode=singles&opp=banger", "#roster", "cpu", "normal", "Banger"],
+      ["?mode=bogus&diff=silly", "#menu", null, "normal"],
+    ];
+    for (const [query, screen, mode, diff, opp] of cases) {
+      const { context, page, errors } = await newPage({ viewport: { width: 1280, height: 800 } }, query);
+      assert.equal(await page.locator(screen).isVisible(), true, `${query} should open ${screen}`);
+      const state = await page.evaluate(() => ({ mode: window.game.pendingMode, diff: window.game.diff, on: document.querySelector(".diff button.on").dataset.diff }));
+      if (mode) assert.equal(state.mode, mode);
+      if (opp) assert.equal(await page.evaluate(() => window.game.oppBuild.name), opp);
+      assert.equal(state.diff, diff);
+      assert.equal(state.on, diff);
+      if (screen === "#roster") {
+        await page.click("#btn-roster-back");
+        assert.equal(await page.locator("#menu").isVisible(), true);
+        assert.equal(await page.evaluate(() => location.search), "", "back to menu should drop the deep link");
+      }
+      assert.deepEqual(errors, []);
+      await context.close();
+    }
+    passed("deep links", "mode + diff params open the right setup screen");
   }
 } finally {
   await browser.close();

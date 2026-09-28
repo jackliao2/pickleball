@@ -2,6 +2,8 @@
 // The spec exports { slug, title, description, ogTitle, ogDescription, headline, crumb,
 // kicker, h1, meta, body, faq: [[q, a], ...] }. body is raw HTML; faq feeds both
 // the FAQPage schema and the visible "Common questions" list.
+// In-body "play" links should deep-link a mode: /?mode=singles|doubles|2p|tournament,
+// optional &amp;diff=easy|normal|hard and &amp;opp=<preset id> (see Game.applyDeepLink).
 import { writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { resolve } from 'node:path';
