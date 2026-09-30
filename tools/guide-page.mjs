@@ -94,6 +94,7 @@ ${spec.faq.map(([q, a]) => `      <dt>${q}</dt>\n      <dd>${a}</dd>`).join('\n'
 
     <div class="guide-next">
 ${spec.next}
+      <a class="docs-cta" href="${spec.cta || "/?mode=singles"}">Play the free pickleball game</a>
     </div>
 
     <footer class="site-foot">
