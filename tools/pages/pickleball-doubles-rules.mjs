@@ -69,6 +69,7 @@ export default {
     ['Can your partner stand in the kitchen while you volley?', 'Yes. The kitchen rule applies to the player who hits the volley. Your partner being in the kitchen is not a fault unless they volley from there.'],
     ['Can either player return the serve in doubles?', 'No. Only the player diagonally opposite the server may return it. If the serve hits the receiver’s partner, the serving team wins the point.'],
   ],
-  next: `      <p><strong>Keep going:</strong> the <a href="/guides/pickleball-scoring">scoring guide</a> walks through a full doubles game call by call, and <a href="/guides/singles-vs-doubles">singles vs doubles</a> covers positioning and stacking.</p>
+  next: `      <p>Next level: <a href="/guides/pickleball-stacking">how stacking works</a>, with court diagrams.</p>
+      <p><strong>Keep going:</strong> the <a href="/guides/pickleball-scoring">scoring guide</a> walks through a full doubles game call by call, and <a href="/guides/singles-vs-doubles">singles vs doubles</a> covers positioning and stacking.</p>
       <p>Or <a href="/?mode=doubles">play doubles with an AI partner</a>.</p>`,
 };

@@ -74,5 +74,6 @@ export default {
     ['Can I learn pickleball rules online?', 'Yes. Besides the guides on this site, VS Pickleball is a free online pickleball game that enforces the serve, the two-bounce rule, the kitchen and the scoring, so you can see each rule in action before your first session.'],
   ],
   cta: '/?mode=singles&amp;diff=easy',
-  next: `      <p><strong>Keep going:</strong> <a href="/guides/beginner-strategy">beginner strategy</a>, then <a href="/guides/how-to-dink">how to dink</a> and <a href="/guides/third-shot-drop">the third-shot drop</a>.</p>`,
+  next: `      <p>Check what you learned with the <a href="/guides/pickleball-rules-quiz">pickleball rules quiz</a>.</p>
+      <p><strong>Keep going:</strong> <a href="/guides/beginner-strategy">beginner strategy</a>, then <a href="/guides/how-to-dink">how to dink</a> and <a href="/guides/third-shot-drop">the third-shot drop</a>.</p>`,
 };
