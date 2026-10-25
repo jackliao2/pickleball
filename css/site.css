@@ -163,6 +163,7 @@ body.docs {
 .docs-shell th, .docs-shell td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
 .docs-shell th { font-weight: 700; color: rgba(244,241,232,0.92); }
 .docs-shell td:first-child { font-weight: 600; white-space: nowrap; }
+.docs-shell table.wrap-first td:first-child { white-space: normal; font-weight: 400; }
 .guide-list { list-style: none; padding: 0; margin: 0 0 18px; }
 .guide-list li { border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; margin: 0 0 10px; background: rgba(255,255,255,0.03); }
 .guide-list li a { font-weight: 700; text-decoration: none; }
