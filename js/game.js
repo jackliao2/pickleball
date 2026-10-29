@@ -2182,6 +2182,8 @@ export class Game {
         }
       }
     } else {
+      // Pace comes from a shorter flight, not a longer one, so the drive still lands on the aim.
+      if (style === "drive") t = Math.max(tMin, t / lerp(1.0, 1.18, punch));
       for (let i = 0; i < 16; i++) {
         vx = (tx - b.x) / t;
         vy = (ty - b.y) / t;
@@ -2192,11 +2194,6 @@ export class Game {
           if (b.y > NET_Y) ty = Math.max(1.8, ty - 0.5);
           else ty = Math.min(42.2, ty + 0.5);
         }
-      }
-      if (style === "drive") {
-        const drive = lerp(1.0, 1.18, punch);
-        vx *= drive;
-        vy *= drive;
       }
     }
     b.z = z0;
@@ -2282,6 +2279,11 @@ export class Game {
       } else {
         p.x = clamp(p.x, -2.5, CW + 2.5);
         p.y = clamp(p.y, NET_Y + 0.35, CL + 3.2);
+      }
+      if (this.phase === "serve" && p === this.serverPlayer()) {
+        // Server stays between the centre line and the sideline of the serving half.
+        const highX = this.evenScore() === (p.side === "near");
+        p.x = highX ? clamp(p.x, CW / 2 + 0.3, CW - 0.3) : clamp(p.x, 0.3, CW / 2 - 0.3);
       }
       if (p.kitchenWatch && this.time > p.kitchenWatch) p.kitchenWatch = 0;
     }
