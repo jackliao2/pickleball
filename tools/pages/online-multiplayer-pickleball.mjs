@@ -2,7 +2,7 @@ export default {
   root: true,
   slug: 'online-multiplayer-pickleball',
   title: 'Online Multiplayer Pickleball: Play a Friend Free in Your Browser',
-  description: 'Play pickleball online against a friend: make a room, send the link, and play a game to 11 with real kitchen and two-bounce rules. Free, no account, phone or computer.',
+  description: 'Play pickleball online against a friend: make a room, send the link, play a game to 11 with real kitchen and two-bounce rules. Free, no account, phone or PC.',
   ogTitle: 'Online Pickleball, 1 vs 1 With a Friend',
   ogDescription: 'Make a room, send the link, play a game to 11. Free, no account, phone or computer.',
   headline: 'Online multiplayer pickleball: play a friend in your browser',

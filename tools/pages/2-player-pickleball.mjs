@@ -47,11 +47,11 @@ export default {
     </ul>
 
     <h2>Other ways to play</h2>
-    <p>No second person? Play <a href="/?mode=singles">singles against the CPU</a> on easy, normal or hard, or <a href="/?mode=doubles">doubles with an AI partner</a>. For a longer run, the <a href="/?mode=tournament">tournament</a> takes one player from a club qualifier to a championship final.</p>
+    <p>Friend in another room, or another city? <a href="/online-multiplayer-pickleball">Play online</a>: you send a link, they open it, and you each play from your own screen. No second person at all? Play <a href="/?mode=singles">singles against the CPU</a> on easy, normal or hard, or <a href="/?mode=doubles">doubles with an AI partner</a>. For a longer run, the <a href="/?mode=tournament">tournament</a> takes one player from a club qualifier to a championship final.</p>
 `,
   faq: [
     ['Is this 2 player pickleball game free?', 'Yes. It runs in any modern browser with no download, no account and no purchase.'],
-    ['Can we play 2 player pickleball online from different computers?', 'Not yet. 2 player mode is local: both players share one keyboard on the same computer. Online multiplayer is not available.'],
+    ['Can we play 2 player pickleball online from different computers?', 'Yes, with online play. Choose Play a friend online, create a room and send your friend the link. That mode works on phones too; 2 player mode itself is for two people sharing one keyboard.'],
     ['Does 2 player mode work on a phone or tablet?', 'The 2 player mode needs a keyboard, because each player has their own set of keys. On a phone you can play singles or doubles against the CPU with touch controls.'],
     ['Can we play doubles with two people?', 'Not in the current version. 2 player mode is one versus one. Doubles is you and an AI partner against two CPU players.'],
     ['Which keys does player 2 use?', 'The arrow keys to move and aim, and Enter to hit: tap Enter for a soft dink, hold and release it for a hard speed-up.'],

@@ -22,7 +22,7 @@ export default {
         <tr><td>Pickleball Smash</td><td>Nintendo Switch</td><td>Motion controls, couch multiplayer</td></tr>
         <tr><td>Pickleball One</td><td>Meta Quest (VR)</td><td>Real swings, drills, online matches</td></tr>
         <tr><td>Home Sports</td><td>Meta Quest 3 / 3S (VR)</td><td>Pickleball plus four other sports</td></tr>
-        <tr><td>VS Pickleball</td><td>Any browser, phone or desktop</td><td>Free, instant, real rules</td></tr>
+        <tr><td>VS Pickleball</td><td>Any browser, phone or desktop</td><td>Free, instant, real rules, play a friend by link</td></tr>
       </tbody>
     </table></div>
 
@@ -38,7 +38,7 @@ export default {
     <h2>VS Pickleball: free in your browser</h2>
     <p>This site. VS Pickleball is a free online pickleball game that needs no console, headset or download: open the page on a laptop or phone and you are serving within seconds. It is built around the rules that make pickleball different from tennis, so the <a href="/guides/kitchen-rule">kitchen</a> is enforced, the <a href="/guides/two-bounce-rule">two-bounce rule</a> is enforced, serves are underhand, and scoring is rally scoring to 11. You can play singles or doubles against the CPU, <a href="/2-player-pickleball">2 players on one keyboard</a>, or a single-elimination tournament.</p>
     <a class="docs-cta" href="/?mode=singles">Play VS Pickleball free</a>
-    <p>What it does not have: licensed pros, online multiplayer, or motion controls. It is the one to pick when you want a quick game on whatever device is in front of you, or when you are learning the rules and want to see them called in real time.</p>
+    <p>What it does not have: licensed pros or motion controls, and its <a href="/online-multiplayer-pickleball">online play</a> is one on one against a friend you send a link to, not matchmaking with strangers. It is the one to pick when you want a quick game on whatever device is in front of you, or when you are learning the rules and want to see them called in real time.</p>
 
     <h2>Is there pickleball in Wii Sports or Nintendo Switch Sports?</h2>
     <p>No. The original Wii Sports had tennis but never pickleball, and Nintendo Switch Sports has tennis and badminton but no pickleball. If you want the Wii Sports feel with pickleball, the closest options are Pickleball Smash on Switch, which uses the same swing-the-controller idea, or Home Sports in VR, which openly models itself on Wii Sports.</p>

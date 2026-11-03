@@ -1,8 +1,9 @@
 // End-to-end check of online play: two separate browsers, a real room service.
 // Needs the room Worker running locally first:
 //   cd cloudflare/rooms && npx wrangler dev --port 8787 --ip 127.0.0.1
-// then: node tests/online.mjs [--relay]
+// then: node tests/online.mjs [--relay] [--base https://vspickleball.com]
 //   --relay  takes WebRTC away from the guest so the match runs through the room.
+//   --base   runs against a deployed site instead of the local files.
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import { readFile, stat } from "node:fs/promises";
@@ -30,7 +31,8 @@ const server = createServer(async (req, res) => {
   }
 });
 await new Promise((r) => server.listen(0, "127.0.0.1", r));
-const base = `http://127.0.0.1:${server.address().port}`;
+const baseArg = process.argv.indexOf("--base");
+const base = baseArg > 0 ? process.argv[baseArg + 1] : `http://127.0.0.1:${server.address().port}`;
 
 const browser = await chromium.launch({ channel: "msedge", headless: true });
 const errors = [];
@@ -82,6 +84,11 @@ try {
   await host.waitForTimeout(250);
   const after = await game(host, () => window.game.far.x);
   step(`guest moved left; host sees far.x ${before.toFixed(2)} → ${after.toFixed(2)}`);
+  if (!(after > before + 1)) {
+    const h = await game(host, () => ({ pt: window.game.online.pt, remote: window.game.online.remote, transport: window.game.online.transport, state: window.game.online.session.state }));
+    const g = await game(guest, () => ({ lastPt: window.game.online.lastPt, nearX: window.game.near.x, phase: window.game.phase, snaps: window.game.online.snaps.length, transport: window.game.online.session.transport, state: window.game.online.session.state }));
+    console.log("host", JSON.stringify(h), "| guest", JSON.stringify(g));
+  }
   assert.ok(after > before + 1, "host sees the guest move to the guest's left");
 
   // Guest plays like a simple bot: stand where the ball is coming and hold the swing.
