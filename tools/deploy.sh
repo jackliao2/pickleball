@@ -19,7 +19,15 @@ find . -path ./node_modules -prune -o -name '*.html' -print0 \
   | xargs -0 sed -i -E 's#(/css/style\.css|/css/site\.css|/js/game\.js)\?v=[0-9]+#\1?v='"$STAMP"'#g'
 echo "assets: v=$STAMP"
 
-scp -i "$KEY" -o BatchMode=yes -r "${FILES[@]}" "$HOST:$DEST/"
+# Assets before pages: an HTML page that names game.js?v=NEW must never be live
+# while the old game.js is still on the server, or Cloudflare caches the old file
+# under the new stamp for 4 hours.
+ASSETS=() PAGES=()
+for f in "${FILES[@]}"; do
+  if [[ "$f" == *.html || "$f" == guides || "$f" == sitemap.xml ]]; then PAGES+=("$f"); else ASSETS+=("$f"); fi
+done
+scp -i "$KEY" -o BatchMode=yes -r "${ASSETS[@]}" "$HOST:$DEST/"
+scp -i "$KEY" -o BatchMode=yes -r "${PAGES[@]}" "$HOST:$DEST/"
 ssh -i "$KEY" -o BatchMode=yes "$HOST" "chown -R root:www-data $DEST && find $DEST -type d -exec chmod 755 {} \; && find $DEST -type f -exec chmod 644 {} \;"
 echo "uploaded: $(curl -s -o /dev/null -w '%{http_code}' https://vspickleball.com/)"
 
