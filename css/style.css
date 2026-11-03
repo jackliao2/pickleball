@@ -193,6 +193,8 @@ canvas {
   color: var(--yellow);
 }
 .chip[hidden] { display: none !important; }
+.chip-net { opacity: 0.8; text-transform: none; letter-spacing: 0.02em; }
+.chip-net.slow { opacity: 1; border-color: rgba(255,180,168,0.6); color: #ffd0c8; }
 
 .keys {
   position: absolute;
@@ -803,6 +805,7 @@ h3 { font-size: 15px; letter-spacing: 0.12em; text-transform: uppercase; margin:
 #online-code { text-transform: uppercase; letter-spacing: 0.18em; }
 .online-row .btn { width: auto; flex: none; }
 .online-code { margin-top: 14px; font-size: 14px; color: rgba(244,241,232,0.75); }
+.online-note { margin-top: 14px; padding: 10px 12px; font-size: 12.5px; line-height: 1.45; color: rgba(244,241,232,0.72); background: rgba(255,255,255,0.04); border: 1px solid var(--line); border-radius: 10px; }
 .online-code strong { color: var(--yellow); letter-spacing: 0.16em; font-size: 18px; }
 
 #menu .btn.play-main { margin-top: 0; padding: 14px 16px; font-size: 17px; }

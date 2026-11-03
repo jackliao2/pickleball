@@ -97,8 +97,9 @@ function sanitizeLook(look) {
 
 const ONLINE_BUILD = { ...PRESETS.balanced };
 const ONLINE_SOUNDS = ["hit", "bounce", "net", "point", "fault", "whistle", "cheer", "crowd"];
-// How far behind the host's clock the friend draws, so there is always a next update to move towards.
-const ONLINE_DELAY_MS = 70;
+// How far behind the host's clock the friend draws, at least, so there is always a next update to
+// move towards. It grows with the measured jitter of the connection (see onSnapshot).
+const ONLINE_DELAY_MS = 60;
 
 function tintLook(look, amt) {
   return { ...look, shirt: shadeHex(look.shirt, amt), paddle: shadeHex(look.paddle || look.shirt, amt) };
@@ -668,6 +669,11 @@ export class Game {
       remote: null,
       snaps: [],
       offset: null,
+      lates: [],
+      delay: ONLINE_DELAY_MS,
+      slowFor: 0,
+      warned: false,
+      netCheck: 0,
       hostCharging: false,
       downAt: 0,
       hudKey: "",
@@ -738,8 +744,12 @@ export class Game {
         break;
       case "i": {
         if (!host) break;
+        const q = msg.q | 0;
+        if (o.remote && q <= o.remote.q) break;
         const num = (v, lo, hi) => (Number.isFinite(+v) ? clamp(+v, lo, hi) : 0);
         o.remote = {
+          q,
+          at: performance.now(),
           pt: msg.pt | 0,
           x: num(msg.x, -3, CW + 3),
           y: num(msg.y, NET_Y, CL + 4),
@@ -805,6 +815,8 @@ export class Game {
     o.started = true;
     o.snaps = [];
     o.offset = null;
+    o.lates = [];
+    o.delay = ONLINE_DELAY_MS;
     o.lastPt = -1;
     o.hudKey = "";
     this.venue = VENUES.find((v) => v.id === msg.venue) || this.venue;
@@ -827,6 +839,32 @@ export class Game {
         Sfx.prototype[name].apply(this.sfx, args);
         if (this.online?.role === "host" && this.screen === "play") this.netSend({ t: "sfx", n: name, a: args }, true);
       };
+    }
+  }
+
+  /** Leave the room (if any) and go to the singles setup screen. */
+  playCpuInstead() {
+    this.toMenu();
+    this.openRoster("cpu");
+  }
+
+  /** Once a second: show the ping, and say so once if the connection is slow. */
+  netStatus(now) {
+    const o = this.online;
+    if (now - o.netCheck < 1000) return;
+    o.netCheck = now;
+    const rtt = Math.round(o.session?.rtt || 0);
+    const relay = o.transport === "relay";
+    const chip = $("chip-net");
+    chip.hidden = false;
+    chip.textContent = rtt ? `Ping ${rtt} ms${relay ? " · via server" : ""}` : relay ? "Via server" : "Online";
+    chip.title = relay ? "Your games are connected through a server" : "Your games are connected directly";
+    const slow = rtt > 180 || (o.role === "guest" && o.delay > 170);
+    chip.classList.toggle("slow", slow);
+    o.slowFor = slow ? o.slowFor + 1 : 0;
+    if (o.slowFor >= 3 && !o.warned) {
+      o.warned = true;
+      this.toast("Slow connection, so expect some lag. Soft shots help.", true, 4);
     }
   }
 
@@ -863,13 +901,16 @@ export class Game {
 
   netTick(now) {
     const o = this.online;
-    if (!o?.started || this.screen !== "play" || now - o.lastSend < 33) return;
+    if (!o?.started || this.screen !== "play") return;
+    this.netStatus(now);
+    if (now - o.lastSend < 33) return;
     o.lastSend = now;
     if (o.role === "host") this.netSend(this.snapshot(now));
     else {
       const p = this.near;
       const { ax, ay } = this.aimAxes(p);
-      this.netSend({ t: "i", pt: o.lastPt, x: CW - p.x, y: CL - p.y, vx: -p.vx, vy: -p.vy, ax, ay, touch: this.isTouchInput() ? 1 : 0 });
+      o.inSeq = (o.inSeq || 0) + 1;
+      this.netSend({ t: "i", q: o.inSeq, pt: o.lastPt, x: CW - p.x, y: CL - p.y, vx: -p.vx, vy: -p.vy, ax, ay, touch: this.isTouchInput() ? 1 : 0 });
     }
   }
 
@@ -901,6 +942,14 @@ export class Game {
     // allowed to creep up slowly in case the route gets slower.
     const gap = now - s.ht;
     o.offset = o.offset == null ? gap : Math.min(gap, o.offset + 0.5);
+    // How late this update was compared with the quickest ones. Draw far enough
+    // behind that nearly every update is already here when we need it: grow the
+    // buffer quickly when the connection gets bumpy, shrink it slowly when calm.
+    o.lates.push(gap - o.offset);
+    if (o.lates.length > 60) o.lates.shift();
+    const sorted = o.lates.slice().sort((x, y) => x - y);
+    const target = clamp(sorted[Math.floor(sorted.length * 0.95)] + 40, ONLINE_DELAY_MS, 260);
+    o.delay += (target - o.delay) * (target > o.delay ? 0.25 : 0.03);
     const last = o.snaps[o.snaps.length - 1];
     if (last && s.ht <= last.ht) return;
     o.snaps.push(s);
@@ -922,18 +971,22 @@ export class Game {
     const o = this.online;
     const snaps = o.snaps;
     if (!snaps.length) return;
-    const rt = performance.now() - o.offset - ONLINE_DELAY_MS;
+    const rt = performance.now() - o.offset - o.delay;
     let i = snaps.length - 1;
     while (i > 0 && snaps[i - 1].ht > rt) i--;
     const b = snaps[i];
     const a = i > 0 ? snaps[i - 1] : b;
     const span = b.ht - a.ht;
     const k = span > 0 ? clamp((rt - a.ht) / span, 0, 1) : 1;
+    // Past the newest update (it is late): keep things moving along their last
+    // known path for a moment instead of freezing them.
+    const ext = i === snaps.length - 1 && rt > b.ht ? Math.min((rt - b.ht) / 1000, 0.15) : 0;
     const flip = (side) => (side === "near" ? "far" : side === "far" ? "near" : side);
     const mix = (u, v) => lerp(Number(u) || 0, Number(v) || 0, k);
 
     const ball = this.ball;
-    const jump = Math.hypot(a.b[0] - b.b[0], a.b[1] - b.b[1]) > 6;
+    // A new point or a ball picked up is a teleport, not a flight to smooth over.
+    const jump = a.pt !== b.pt || a.b[7] !== b.b[7] || Math.hypot(a.b[0] - b.b[0], a.b[1] - b.b[1]) > 12;
     const ab = jump ? b.b : a.b;
     ball.x = CW - mix(ab[0], b.b[0]);
     ball.y = CL - mix(ab[1], b.b[1]);
@@ -946,6 +999,11 @@ export class Game {
     ball.lastHit = flip(b.b[8]);
     ball.lastBounceSide = flip(b.b[9]);
     ball.bouncesSide = b.b[10] | 0;
+    if (ext && ball.live && !ball.held) {
+      ball.x += ball.vx * ext;
+      ball.y += ball.vy * ext;
+      ball.z = Math.max(0, ball.z + ball.vz * ext - 0.5 * G * ext * ext);
+    }
     if (ball.held) ball.trail = [];
     else {
       ball.trail.push({ x: ball.x, y: ball.y, z: ball.z });
@@ -969,6 +1027,10 @@ export class Game {
     opp.twist = Number(bn[10]) || 0;
     opp.shotKind = String(bn[11] || "dink");
     opp.chargeDir = bn[12] === -1 ? -1 : 1;
+    if (ext) {
+      opp.x += opp.vx * ext;
+      opp.y += opp.vy * ext;
+    }
 
     // Our own player: position and charge are ours; the swing is the host's call.
     const me = this.near;
@@ -1349,6 +1411,7 @@ export class Game {
     $("btn-online-share").onclick = () =>
       navigator.share?.({ title: "VS Pickleball", text: "Play me at pickleball:", url: $("online-link").value }).catch(() => {});
     $("btn-online-back").onclick = () => this.toMenu();
+    for (const id of ["btn-online-cpu", "btn-pause-cpu", "btn-over-cpu"]) $(id).onclick = () => this.playCpuInstead();
     // Closing the tab tells your friend straight away instead of after a timeout.
     window.addEventListener("pagehide", () => this.online && this.leaveOnline());
     $("btn-start-match").onclick = () => this.confirmRoster();
@@ -1613,6 +1676,17 @@ export class Game {
           : this.oppBuild.name || "CPU";
     $("online").hidden = true;
     $("btn-next-challenge").hidden = true;
+    $("chip-net").hidden = true;
+    $("btn-pause-cpu").hidden = !online;
+    $("btn-over-cpu").hidden = !online;
+    $("pause-note").hidden = !online;
+    $("pause-title").textContent = online ? "Online match" : "Paused";
+    $("btn-resume").textContent = online ? "Back to the match" : "Resume";
+    if (this.online) {
+      this.online.slowFor = 0;
+      this.online.warned = false;
+      this.online.netCheck = 0;
+    }
     this.match = this.freshMatch();
     this.meta = this.emptyMeta();
     this.resetPoint();
@@ -2789,7 +2863,7 @@ export class Game {
     } else {
       this.steer(this.near, dt, true);
       if (this.mode === "p2") this.steer(this.far, dt, false);
-      else if (this.mode === "online") this.followRemote(this.far);
+      else if (this.mode === "online") this.followRemote(this.far, dt);
       else this.ai(dt);
     }
 
@@ -2858,17 +2932,28 @@ export class Game {
     }
   }
 
-  /** Online host: the friend moves their own player and reports where it is.
-   *  Reports from before the current point started are ignored, so the serve
-   *  setup is not undone by a position still in flight. */
-  followRemote(p) {
+  /** Online host: the friend moves their own player and reports where it is,
+   *  30 times a second. Between reports we keep them moving the way they were
+   *  going, so they glide at the full frame rate instead of stepping, and ease
+   *  into each new report. Reports from before the current point started are
+   *  ignored, so the serve setup is not undone by a position still in flight. */
+  followRemote(p, dt) {
     const r = this.online?.remote;
     if (!r || r.pt !== this.online.pt) {
       p.vx = p.vy = 0;
       return;
     }
-    p.x = r.x;
-    p.y = r.y;
+    const ahead = Math.min((performance.now() - r.at) / 1000, 0.15);
+    const tx = r.x + r.vx * ahead;
+    const ty = r.y + r.vy * ahead;
+    if (Math.hypot(tx - p.x, ty - p.y) > 3) {
+      p.x = tx;
+      p.y = ty;
+    } else {
+      const k = 1 - Math.exp(-dt * 18);
+      p.x += (tx - p.x) * k;
+      p.y += (ty - p.y) * k;
+    }
     p.vx = r.vx;
     p.vy = r.vy;
   }
@@ -3681,13 +3766,13 @@ export class Game {
 
   /** Small status line. On touch only `important` toasts show; the coaching
    *  ones ("Let it bounce", "Whiff", serve reminders) just cover the court. */
-  toast(text, important = false) {
+  toast(text, important = false, seconds = 1.4) {
     if (this.demo) return;
     if (this.online?.role === "host" && /switch sides|Net cord/.test(text)) this.netSend({ t: "toast", text }, true);
     if (!important && this.isTouchInput() && this.screen === "play") return;
     $("toast").textContent = text;
     $("toast").classList.add("show");
-    this.toastT = 1.4;
+    this.toastT = seconds;
   }
 
   loop(now) {
