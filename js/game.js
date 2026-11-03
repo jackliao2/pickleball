@@ -14,14 +14,16 @@ const DIFF = {
 };
 // Your doubles partner skips the difficulty handicaps and never stands and watches a ball go by.
 const PARTNER_AI = { ...DIFF.hard, miss: 0 };
+// Chance a CPU receiver can't get to your serve at Serve 10; scales down to none at Serve 4.
+const ACE_RATE = { easy: 0.12, normal: 0.07, hard: 0.035 };
 
 const STAT_LIST = [
-  ["speed", "Speed", "Foot speed around the court"],
-  ["power", "Power", "Pace on drives and speed-ups"],
-  ["angle", "Angle", "Keeps drives in; low angle sprays out"],
-  ["serve", "Serve", "Depth, bite, and fewer faults"],
-  ["hands", "Hands", "Kitchen volleys and recovery"],
-  ["reach", "Reach", "How far the paddle covers"],
+  ["speed", "Speed", "How fast you move around the court"],
+  ["power", "Power", "Pace on drives, speed-ups and smashes"],
+  ["angle", "Angle", "Accuracy: low Angle sends more shots wide or long"],
+  ["serve", "Serve", "Deeper, lower serves and more aces"],
+  ["hands", "Hands", "Volley range at the kitchen and swing recovery"],
+  ["reach", "Reach", "How far from your body you can still hit"],
 ];
 const STAT_IDS = STAT_LIST.map((s) => s[0]);
 const STAT_UPGRADES = Object.fromEntries(
@@ -125,7 +127,7 @@ const TOURNAMENT = [
     blurb: "Runs the court, still learning the kitchen. Medium pace, not a banger.",
     venue: "beach",
     points: 7,
-    objective: { type: "aces", value: 1, label: "Score at least 1 ace" },
+    objective: { type: "aces", value: 1, label: "Serve 1 ace — a serve Jordan can't reach; a higher Serve stat makes aces likelier" },
     tactic: {
       id: "runner",
       label: "Runner",
@@ -144,7 +146,7 @@ const TOURNAMENT = [
     blurb: "Lives at the NVZ. Soft hands, blocks, then speed-ups when you pop it up.",
     venue: "club",
     points: 9,
-    objective: { type: "longest", value: 12, label: "Survive a 12-shot kitchen battle" },
+    objective: { type: "longest", value: 12, label: "Survive a 12-shot rally" },
     tactic: {
       id: "kitchen-specialist",
       label: "Kitchen specialist",
@@ -163,7 +165,7 @@ const TOURNAMENT = [
     blurb: "Big drives and body speed-ups. Weak on touch. Reset to the kitchen.",
     venue: "night",
     points: 9,
-    objective: { type: "attackWins", value: 2, label: "Win 2 rallies with speed-ups or smashes" },
+    objective: { type: "attackWins", value: 2, label: "Win 2 points where your speed-up or smash is the last shot — hold your swing on a high ball at the kitchen" },
     tactic: {
       id: "banger",
       label: "Banger",
@@ -2430,7 +2432,7 @@ export class Game {
       p.aiTrackHit = this.ball.lastHit;
       p.aiOffX = serveReturn ? 0 : rand(-d.chase, d.chase);
       p.aiOffY = serveReturn ? 0 : rand(-d.chase * 0.35, d.chase * 0.3);
-      p.aiWhiff = serveReturn ? false : Math.random() < (d.miss || 0);
+      p.aiWhiff = serveReturn ? this.aceOnServe(p) : Math.random() < (d.miss || 0);
       p.aiChaseX = null;
       p.aiMine = this.claimsBall(p, land);
     }
@@ -2487,6 +2489,12 @@ export class Game {
       const homeX = this.isDoubles() ? this.laneX(p) : clamp(lerp(p.x, this.ball.x, 0.18), 3, 17);
       this.moveTo(p, homeX, homeY, dt);
     }
+  }
+
+  aceOnServe(p) {
+    if (this.demo || !this.isCpuSide(p)) return false;
+    const serve = this.serverPlayer().serveSkill ?? 6;
+    return Math.random() < (Math.max(0, serve - 4) / 6) * (ACE_RATE[this.diff] ?? 0);
   }
 
   // Each incoming ball is claimed once, when it is struck, so a partner never runs across and then leaves it.
@@ -2763,13 +2771,11 @@ export class Game {
 
     if (faulter !== "near" && faulter !== "far") faulter = this.ball.lastHit === "far" ? "far" : "near";
     const winner = faulter === "near" ? "far" : "near";
-    if (
+    const attackWin =
       winner === "near" &&
       this.ball.lastHit === "near" &&
-      (this.lastKind === "speedup" || this.lastKind === "smash")
-    ) {
-      this.meta.attackWins += 1;
-    }
+      (this.lastKind === "speedup" || this.lastKind === "smash");
+    if (attackWin) this.meta.attackWins += 1;
     const server = this.match.server;
     const serverWon = winner === server;
     this.match[winner] += 1;
@@ -2846,6 +2852,10 @@ export class Game {
     if (!this.match.switched && (this.match.near === switchAt || this.match.far === switchAt)) {
       this.match.switched = true;
       this.toast(`${switchAt} — switch sides`, true);
+    }
+    if (attackWin && this.mode === "challenge" && TOURNAMENT[this.challengeIndex]?.objective.type === "attackWins") {
+      const o = this.challengeObjectiveState();
+      this.toast(`Bonus · attack win ${Math.min(o.current, o.target)}/${o.target}`, true);
     }
     this.syncHud();
     if (highlight && this.tape.length >= 18) {
@@ -3018,7 +3028,7 @@ export class Game {
     const objectiveChip = $("chip-objective");
     if (this.mode === "challenge" && this.challengeIndex >= 0) {
       const objective = this.challengeObjectiveState();
-      const labels = { margin: "Lead", longest: "Rally", aces: "Ace", attackWins: "Attack" };
+      const labels = { margin: "Lead", longest: "Best rally", aces: "Aces", attackWins: "Attack wins" };
       objectiveChip.hidden = false;
       objectiveChip.textContent = `Bonus · ${labels[objective.type] || "Goal"} ${Math.min(objective.current, objective.target)}/${objective.target}`;
       objectiveChip.classList.toggle("done", objective.met);

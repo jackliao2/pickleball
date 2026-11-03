@@ -209,6 +209,8 @@ try {
     const returns = await page.evaluate(() => {
       const g = window.game;
       g.paused = true;
+      // Serve 4 has no ace chance, so every legal serve must come back.
+      g.applyBuild(g.near, { ...g.near.stats, serve: 4 });
       const summary = {};
       for (const diff of ["easy", "normal", "hard"]) {
         let returned = 0;
@@ -240,6 +242,31 @@ try {
     }
     assert.deepEqual(errors, []);
     passed("CPU serve returns", Object.entries(returns).map(([d, x]) => `${d} ${x.returned}/${x.total}`).join(", "));
+
+    const aces = await page.evaluate(() => {
+      const g = window.game;
+      g.applyBuild(g.near, { ...g.near.stats, serve: 10 });
+      const rate = {};
+      for (const diff of ["easy", "hard"]) {
+        g.diff = diff;
+        let n = 0;
+        for (let trial = 0; trial < 300; trial++) {
+          g.match = g.freshMatch();
+          g.meta = g.emptyMeta();
+          g.resetPoint();
+          g.near.charge = 0.6;
+          g.near.charging = true;
+          g.releaseSwing(g.near);
+          for (let step = 0; step < 600 && g.rallyLen <= 1 && g.phase !== "dead"; step++) g.update(1 / 120);
+          n += g.meta.aces;
+        }
+        rate[diff] = n / 300;
+      }
+      return rate;
+    });
+    assert(aces.easy > 0.05 && aces.easy < 0.22, `Serve 10 on easy should ace ~12% (got ${aces.easy})`);
+    assert(aces.hard < aces.easy && aces.hard < 0.09, `hard CPU should give up fewer aces (got ${aces.hard})`);
+    passed("Serve stat aces", `Serve 10: easy ${(aces.easy * 100).toFixed(0)}%, hard ${(aces.hard * 100).toFixed(0)}%`);
     await context.close();
   }
 
@@ -433,7 +460,7 @@ try {
       g.match.far = 5;
       g.syncHud();
     });
-    assert.match(await page.locator("#chip-objective").textContent(), /Rally 8\/8/);
+    assert.match(await page.locator("#chip-objective").textContent(), /Best rally 8\/8/);
     assert.equal(await page.locator("#chip-objective").evaluate((el) => el.classList.contains("done")), true);
     await page.evaluate(() => window.game.checkWin());
     assert.equal(await page.locator("#upgrade-choices .upgrade-choice").first().getAttribute("data-amount"), "2");
