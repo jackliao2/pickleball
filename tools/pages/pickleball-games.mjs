@@ -57,7 +57,7 @@ export default {
 
     <h3>12. Wall drills, or play one online</h3>
     <p>Alone, a flat wall is the best partner you will find. Stand about 7 ft away and hit soft forehand and backhand volleys; then step back and practise drives; then mark a line at net height and try to drop balls just above it. Count your longest streak and try to beat it.</p>
-    <p>No wall, rain outside, or just want a game? <a href="/">VS Pickleball</a> is a free pickleball game you can play online in your browser. The kitchen, the two-bounce rule and rally scoring are all enforced, and you can play singles against the CPU, doubles with an AI partner, or <a href="/2-player-pickleball">2 players on one keyboard</a>.</p>
+    <p>No wall, rain outside, or just want a game? <a href="/">VS Pickleball</a> is a free pickleball game you can play online in your browser. The kitchen, the two-bounce rule and rally scoring are all enforced, and you can play singles against the CPU, doubles with an AI partner, or <a href="/2-player-pickleball">2 players on one keyboard</a>. If your group is spread out, you can <a href="/online-multiplayer-pickleball">play a friend online</a> from separate phones or computers.</p>
     <a class="docs-cta" href="/?mode=singles">Play a pickleball game online</a>
 
     <h2>Picking the right game</h2>

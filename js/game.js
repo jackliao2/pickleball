@@ -1128,6 +1128,8 @@ export class Game {
   }
 
   renderVenuePicks() {
+    const name = $("venue-name");
+    if (name) name.textContent = this.venue?.name || VENUES[0].name;
     document.querySelectorAll(".venue-grid").forEach((grid) => {
       grid.innerHTML = "";
       VENUES.forEach((v) => {
@@ -1361,6 +1363,11 @@ export class Game {
     this.renderVenuePicks();
     $("btn-roster-back").onclick = () => this.closeRoster();
     $("btn-howto").onclick = () => this.showHowTo(true);
+    // The menu court is the preview: each click moves to the next venue.
+    $("btn-venue").onclick = () => {
+      const i = VENUES.findIndex((v) => v.id === this.venue?.id);
+      this.setVenue(VENUES[(i + 1) % VENUES.length].id);
+    };
     $("btn-howto-close").onclick = () => this.showHowTo(false);
     $("btn-coach-skip").onclick = () => this.finishTutorial();
     $("btn-tutorial-replay").onclick = () => this.replayTutorial();

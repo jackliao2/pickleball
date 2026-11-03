@@ -178,6 +178,7 @@ body.docs {
 .shot { margin: 6px 0 22px; }
 .shot img { display: block; width: 100%; height: auto; border-radius: 12px; border: 1px solid var(--line); }
 .shot.phone img { max-width: 300px; margin: 0 auto; }
+.shot.narrow img { max-width: 440px; margin: 0 auto; }
 .shot figcaption { font-size: 13px; opacity: 0.75; text-align: center; margin: 8px 8px 0; line-height: 1.45; }
 
 .docs-cta { display: inline-block; margin: 4px 0 22px; padding: 12px 22px; border-radius: 999px; background: var(--yellow); color: var(--ink); font-weight: 800; font-size: 16px; text-decoration: none; }

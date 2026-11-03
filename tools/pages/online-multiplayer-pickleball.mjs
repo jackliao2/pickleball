@@ -1,31 +1,33 @@
 export default {
   root: true,
   slug: 'online-multiplayer-pickleball',
-  title: 'Online Multiplayer Pickleball: Play a Friend Free in Your Browser',
-  description: 'Play pickleball online against a friend: make a room, send the link, play a game to 11 with real kitchen and two-bounce rules. Free, no account, phone or PC.',
-  ogTitle: 'Online Pickleball, 1 vs 1 With a Friend',
+  title: 'Online Multiplayer Pickleball: 2 Player Game, 1v1 With a Friend',
+  description: 'Play 2 player pickleball online, 1v1 against a friend on another device: make a room, send the link, play to 11 with real rules. Free, no account, phone or PC.',
+  ogTitle: 'Online Pickleball: 1v1 With a Friend',
   ogDescription: 'Make a room, send the link, play a game to 11. Free, no account, phone or computer.',
-  headline: 'Online multiplayer pickleball: play a friend in your browser',
+  headline: 'Online multiplayer pickleball: a free 2 player game you play 1v1 with a friend',
   crumb: 'Online multiplayer',
   kicker: 'Online',
   h1: 'Online multiplayer pickleball',
   meta: 'One versus one against a friend, wherever they are. Free, no account, nothing to install. Updated 3 November 2026.',
   body: `
-    <p>You make a room, you send your friend a link, they open it, and you are playing pickleball against each other: a regulation court, a kitchen you cannot volley from, the two-bounce rule and rally scoring to 11. Nobody signs up for anything. It works on a laptop, on a phone, or one of each.</p>
+    <p>This is pickleball for two players online: you against a friend, one on one, each on your own phone or computer. You make a room, send them a link, they open it, and you are playing on a regulation court with a kitchen you cannot volley from, the two-bounce rule and rally scoring to 11. Nobody signs up for anything, and it works on a laptop, on a phone, or one of each.</p>
 
     <a class="docs-cta" href="/?mode=online">Make a room</a>
 
-    <h2>Starting a match</h2>
+    <h2>How to play pickleball online with a friend</h2>
     <ol>
       <li>Open the game and choose <strong>Play a friend online</strong>, then <strong>Create a room</strong>.</li>
       <li>Send the link to your friend however you normally would: text, WhatsApp, Discord. If they would rather type it, the five-letter room code works too.</li>
       <li>When they open it, the match starts on both screens. You serve first.</li>
     </ol>
+    <figure class="shot narrow"><img src="/img/online-lobby.jpg" width="520" height="518" alt="The online room screen: a vspickleball.com room link with a Copy button, a Share link button, and the five-letter room code" loading="lazy" decoding="async" /><figcaption>Making a room gives you a link to send and a code you can read out.</figcaption></figure>
     <p>Keep the game in front while you play. Browsers put background tabs to sleep, so if the person who made the room switches away, the match freezes for both of you, and if they stay away for long the connection drops.</p>
 
     <h2>What it plays like</h2>
     <p>Each of you sees the court from your own end, so you are always the player at the bottom of the screen and your friend is across the net. Controls are the same as everywhere else in the game: WASD or the arrow keys to move and aim, tap <kbd>Space</kbd> to dink, hold it to speed-up. On a phone you drag to move and tap or hold SWING.</p>
-    <p>Both players get the same all-court build, with every stat at 6, so nobody wins because they spent their points better. The match is a single game to 11, win by 2, and either of you can start a rematch from the end screen. The game calls the faults for you: a volley from the kitchen, a return taken out of the air, a serve that lands short. That saves the arguments real courts are full of.</p>
+    <figure class="shot phone"><img src="/img/online-phone.jpg" width="780" height="1560" alt="An online match on the phone of the friend who joined: their player at the near baseline, the opponent in red across the net, the scoreboard reading YOU 0, FRIEND 0" loading="lazy" decoding="async" /><figcaption>The friend who joined sees the same match from their own end.</figcaption></figure>
+    <p>Matches are 1v1 singles. Both players get the same all-court build, with every stat at 6, so nobody wins because they spent their points better. The match is a single game to 11, win by 2, and either of you can start a rematch from the end screen. The game calls the faults for you: a volley from the kitchen, a return taken out of the air, a serve that lands short. That saves the arguments real courts are full of.</p>
 
     <h2>Lag, and how to play around it</h2>
     <p>Your two browsers connect directly to each other where they can, which is the fastest route there is. Some home and mobile networks will not allow that, and then the game passes your shots through a server instead. That still works, a little slower.</p>
@@ -43,7 +45,8 @@ export default {
 `,
   faq: [
     ['Is online pickleball free?', 'Yes. There is no download, no account and nothing to buy. You make a room, send the link, and play.'],
-    ['Can I play pickleball online with a friend on a different computer?', 'Yes. Choose Play a friend online, create a room and send your friend the link. When they open it, the match starts on both screens.'],
+    ['Can I play pickleball online with friends on different computers?', 'Yes. Choose Play a friend online, create a room and send your friend the link. When they open it, the match starts on both screens.'],
+    ['Is there a 2 player pickleball game I can play online?', 'Yes. Online play is a 2 player pickleball game for two people on different devices: one makes a room and sends the other a link. If you are sharing one computer, 2 player mode puts you both on one keyboard instead.'],
     ['Does online play work on a phone?', 'Yes. Either player can be on a phone, a tablet or a computer. On a phone you drag to move and tap or hold the SWING button to hit.'],
     ['Can I play against random people online?', 'Not yet. There is no matchmaking; you play against someone you send a room link to.'],
     ['Can we play doubles online?', 'Not yet. Online matches are one versus one. Doubles is available against the CPU with an AI partner.'],

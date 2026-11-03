@@ -34,7 +34,7 @@
   <link rel="icon" href="/favicon.ico" sizes="32x32" />
   <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
   <link rel="manifest" href="/manifest.webmanifest" />
-  <link rel="stylesheet" href="/css/style.css?v=202611032200" />
+  <link rel="stylesheet" href="/css/style.css?v=202611032223" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -144,15 +144,17 @@
           <button type="button" data-diff="normal" class="on">Normal</button>
           <button type="button" data-diff="hard">Hard</button>
         </div>
-        <div class="venue-bar">
-          <div class="venue-grid"></div>
+        <button type="button" class="btn primary play-main" id="btn-cpu">Play singles vs CPU</button>
+        <div class="mode-grid">
+          <button type="button" class="btn mode" id="btn-doubles"><b>Doubles</b><span>with an AI partner</span></button>
+          <button type="button" class="btn mode" id="btn-challenge"><b>Tournament</b><span>club rec to pro final</span></button>
+          <button type="button" class="btn mode" id="btn-online" hidden><b>Play a friend online</b><span>send them a link</span></button>
+          <button type="button" class="btn mode" id="btn-p2"><b>2 players</b><span>same keyboard</span></button>
         </div>
-        <button type="button" class="btn primary" id="btn-cpu">Singles vs CPU</button>
-        <button type="button" class="btn" id="btn-doubles">Doubles vs CPU</button>
-        <button type="button" class="btn" id="btn-challenge">Tournament</button>
-        <button type="button" class="btn" id="btn-p2">2 Players · same keyboard</button>
-        <button type="button" class="btn" id="btn-online" hidden>Play a friend online</button>
-        <button type="button" class="btn ghost" id="btn-howto">How pickleball works</button>
+        <div class="menu-foot">
+          <button type="button" class="link-btn" id="btn-howto">How pickleball works</button>
+          <button type="button" class="link-btn" id="btn-venue" aria-label="Change court">Court: <span id="venue-name">Park</span> ›</button>
+        </div>
         <p class="hint" id="ctrl-hint"><span class="kb-only">WASD to move and aim. Tap Space to dink. Hold Space (yellow bar) to speed-up.</span><span class="touch-only">Drag the pad to move and aim. Tap SWING to dink, hold it to speed-up.</span> Serves must bounce first.</p>
       </div>
       <section class="seo-blurb">
@@ -165,7 +167,7 @@
           <li><strong>Singles vs CPU</strong> — one on one, three difficulty levels. The easy AI floats dinks and misses drives; hard resets to the kitchen line and punishes anything that pops up.</li>
           <li><strong>Doubles vs CPU</strong> — you and an AI partner against two. Cover your half, poach when the ball floats, and let your partner take the rest.</li>
           <li><strong>2 players, same keyboard</strong> — a local 2-player pickleball game with WASD on one side and the arrow keys on the other. No login, no lobby, just sit next to each other.</li>
-          <li><strong>Online with a friend</strong> — make a room, send the link, and play one on one from wherever you both are, phone or computer. <a href="/online-multiplayer-pickleball">How it works</a>.</li>
+          <li><strong>Online with a friend</strong> — make a room, send the link, and play one on one from wherever you both are, phone or computer. <a href="/online-multiplayer-pickleball">How online multiplayer works</a>.</li>
           <li><strong>Tournament</strong> — single elimination. Build a player, scout each opponent, and climb from a Thursday club ladder to a pro final. One loss ends the run.</li>
         </ul>
 
@@ -182,7 +184,7 @@
           <dt>Does it work on iPhone and Android?</dt>
           <dd>Yes. It runs in Safari and Chrome on any phone from the last few years, with touch controls built for portrait play. Add it to your home screen for a full-screen app feel.</dd>
           <dt>Can I play with a friend?</dt>
-          <dd>Yes, two ways. If your friend is somewhere else, choose “Play a friend online”, create a room and send them the link; the match starts when they open it, on a phone or a computer (<a href="/online-multiplayer-pickleball">how online play works</a>). If you are sitting together, choose “2 Players · same keyboard”: one player uses WASD, the other the arrow keys.</dd>
+          <dd>Yes, two ways. If your friend is somewhere else, choose “Play a friend online”, create a room and send them the link; the match starts when they open it, on a phone or a computer (<a href="/online-multiplayer-pickleball">how online multiplayer works</a>). If you are sitting together, choose “2 Players · same keyboard”: one player uses WASD, the other the arrow keys.</dd>
           <dt>How is this different from a tennis game?</dt>
           <dd>The kitchen. You cannot volley from the non-volley zone, the serve is underhand, and the two-bounce rule slows the first exchange down, so points are won at the net with dinks and patience rather than with a big serve.</dd>
           <dt>Do I need to know the rules before I start?</dt>
@@ -400,6 +402,6 @@
     </div>
     <aside class="side-rail" aria-hidden="true"></aside>
   </div>
-  <script type="module" src="/js/game.js?v=202611032200"></script>
+  <script type="module" src="/js/game.js?v=202611032223"></script>
 </body>
 </html>
