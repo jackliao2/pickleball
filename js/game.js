@@ -868,7 +868,7 @@ export class Game {
     const how = {
       direct: "Connected directly to your friend.",
       turn: "Connected through Cloudflare’s relay, because one of your networks blocks direct connections.",
-      server: `Connected through the game server${w.room ? ` in ${w.room}` : ""}, the slowest route.`,
+      server: `Connected through the game server${w.room ? ` in ${w.room}` : ""}, the slowest route. A VPN on either side is the usual cause; turning it off normally gives a direct link.`,
     }[route];
     const detail = `${how} You: ${me} · friend: ${them}${w.room ? ` · room: ${w.room}` : ""}.`;
     chip.title = detail;
@@ -883,7 +883,7 @@ export class Game {
     o.slowFor = slow ? o.slowFor + 1 : 0;
     if (o.slowFor >= 3 && !o.warned) {
       o.warned = true;
-      this.toast("Slow connection, so expect some lag. Soft shots help.", true, 4);
+      this.toast(route === "server" ? "Slow connection. On a VPN? Turning it off usually helps." : "Slow connection, so expect some lag. Soft shots help.", true, 4);
     }
   }
 
