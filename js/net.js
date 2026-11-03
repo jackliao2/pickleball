@@ -7,7 +7,8 @@
 
 const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const ICE = [{ urls: "stun:stun.cloudflare.com:3478" }, { urls: "stun:stun.l.google.com:19302" }];
-const DIRECT_TIMEOUT_MS = 7000;
+// Long enough for a TURN relay over TCP/TLS to come up on a slow mobile link.
+const DIRECT_TIMEOUT_MS = 9000;
 const SILENCE_MS = 6000;
 
 export function newRoomCode() {
@@ -50,6 +51,11 @@ export class NetSession {
     this.lastHeard = 0;
     this.timers = [];
     this.rtt = 0;
+    this.ice = null;
+    // How the two games ended up connected: "direct", "turn" (Cloudflare's UDP
+    // relay) or "server" (messages through the room). Plus where, for the report.
+    this.route = "";
+    this.where = { room: "", edges: {} };
   }
 
   start() {
@@ -82,6 +88,8 @@ export class NetSession {
         this.setState("waiting");
         break;
       case "peer-joined":
+        if (Array.isArray(msg.ice) && msg.ice.length) this.ice = msg.ice;
+        this.where = { room: String(msg.room || ""), edges: msg.edges || {} };
         this.setState("joining");
         this.openPeer();
         break;
@@ -118,7 +126,7 @@ export class NetSession {
       this.useRelay();
       return;
     }
-    const pc = new RTCPeerConnection({ iceServers: ICE });
+    const pc = new RTCPeerConnection({ iceServers: this.ice || ICE });
     this.pc = pc;
     pc.onicecandidate = (e) => {
       if (e.candidate) this.signal({ type: "rtc", ice: e.candidate.toJSON() });
@@ -178,7 +186,9 @@ export class NetSession {
     ch.onopen = () => {
       if (this.fast?.readyState === "open" && this.sure?.readyState === "open" && !this.transport) {
         this.transport = "direct";
+        this.route = "direct";
         this.ready();
+        this.later(() => this.checkRoute(), 1500);
         // The room has done its job; closing it lets the Durable Object sleep.
         this.later(() => this.ws?.close(1000, "direct"), 1500);
       }
@@ -188,9 +198,32 @@ export class NetSession {
     };
   }
 
+  /** Was the WebRTC link direct, or through the TURN relay? */
+  async checkRoute() {
+    const pc = this.pc;
+    if (!pc) return;
+    try {
+      const stats = await pc.getStats();
+      let pair = null;
+      stats.forEach((r) => {
+        if (r.type === "transport" && r.selectedCandidatePairId) pair = stats.get(r.selectedCandidatePairId);
+      });
+      if (!pair) stats.forEach((r) => {
+        if (r.type === "candidate-pair" && r.nominated && r.state === "succeeded") pair = r;
+      });
+      if (!pair) return;
+      const local = stats.get(pair.localCandidateId);
+      const remote = stats.get(pair.remoteCandidateId);
+      this.route = local?.candidateType === "relay" || remote?.candidateType === "relay" ? "turn" : "direct";
+    } catch {
+      /* stats are a report, not a requirement */
+    }
+  }
+
   useRelay() {
     if (this.transport || this.state === "closed") return;
     this.transport = "relay";
+    this.route = "server";
     try {
       this.pc?.close();
     } catch {

@@ -698,6 +698,7 @@ export class Game {
       this.showOnline("wait", "Friend found", "Connecting…");
     } else if (state === "ready") {
       this.online.transport = detail;
+      this.online.readyAt = performance.now();
       this.netSend({ t: "hello", look: this.youLook }, true);
       if (typeof gtag === "function") gtag("event", "online_ready", { transport: detail });
     } else if (state === "closed") {
@@ -853,12 +854,30 @@ export class Game {
     const o = this.online;
     if (now - o.netCheck < 1000) return;
     o.netCheck = now;
-    const rtt = Math.round(o.session?.rtt || 0);
-    const relay = o.transport === "relay";
+    const s = o.session;
+    const rtt = Math.round(s?.rtt || 0);
+    const route = s?.route || (o.transport === "relay" ? "server" : "direct");
+    const via = { direct: "", turn: " · relay", server: " · via server" }[route] || "";
     const chip = $("chip-net");
     chip.hidden = false;
-    chip.textContent = rtt ? `Ping ${rtt} ms${relay ? " · via server" : ""}` : relay ? "Via server" : "Online";
-    chip.title = relay ? "Your games are connected through a server" : "Your games are connected directly";
+    chip.textContent = rtt ? `Ping ${rtt} ms${via}` : "Online";
+    // Where the connection runs, in plain words, plus the Cloudflare location codes for reports.
+    const w = s?.where || { edges: {} };
+    const me = w.edges?.[o.role] || "?";
+    const them = w.edges?.[o.role === "host" ? "guest" : "host"] || "?";
+    const how = {
+      direct: "Connected directly to your friend.",
+      turn: "Connected through Cloudflare’s relay, because one of your networks blocks direct connections.",
+      server: `Connected through the game server${w.room ? ` in ${w.room}` : ""}, the slowest route.`,
+    }[route];
+    const detail = `${how} You: ${me} · friend: ${them}${w.room ? ` · room: ${w.room}` : ""}.`;
+    chip.title = detail;
+    $("pause-net").textContent = detail;
+    $("pause-net").hidden = false;
+    if (!o.reported && rtt && performance.now() - (o.readyAt || 0) > 4000) {
+      o.reported = true;
+      if (typeof gtag === "function") gtag("event", "online_conn", { route, rtt, room: w.room, edge: me, peer_edge: them });
+    }
     const slow = rtt > 180 || (o.role === "guest" && o.delay > 170);
     chip.classList.toggle("slow", slow);
     o.slowFor = slow ? o.slowFor + 1 : 0;
@@ -1680,6 +1699,7 @@ export class Game {
     $("btn-pause-cpu").hidden = !online;
     $("btn-over-cpu").hidden = !online;
     $("pause-note").hidden = !online;
+    $("pause-net").hidden = true;
     $("pause-title").textContent = online ? "Online match" : "Paused";
     $("btn-resume").textContent = online ? "Back to the match" : "Resume";
     if (this.online) {
