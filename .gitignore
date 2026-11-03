@@ -15,3 +15,4 @@ _net_sim.mjs
 _shots/
 
 .vercel
+.wrangler/

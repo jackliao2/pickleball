@@ -77,6 +77,29 @@ function randomLook() {
   };
 }
 
+/** A look that arrived over the network: keep only known fields and plain hex colours. */
+function sanitizeLook(look) {
+  if (!look || typeof look !== "object") return null;
+  const hex = (v, fallback) => (typeof v === "string" && /^#[0-9a-f]{6}$/i.test(v) ? v : fallback);
+  const d = DEFAULT_YOU_LOOK;
+  return {
+    skin: hex(look.skin, d.skin),
+    shirt: hex(look.shirt, "#e45a43"),
+    shorts: hex(look.shorts, d.shorts),
+    visor: hex(look.visor, d.visor),
+    paddle: hex(look.paddle, "#e45a43"),
+    hair: hex(look.hair, d.hair),
+    shoes: hex(look.shoes, d.shoes),
+    hat: HATS.includes(look.hat) ? look.hat : d.hat,
+    hairStyle: HAIR_STYLES.includes(look.hairStyle) ? look.hairStyle : d.hairStyle,
+  };
+}
+
+const ONLINE_BUILD = { ...PRESETS.balanced };
+const ONLINE_SOUNDS = ["hit", "bounce", "net", "point", "fault", "whistle", "cheer", "crowd"];
+// How far behind the host's clock the friend draws, so there is always a next update to move towards.
+const ONLINE_DELAY_MS = 70;
+
 function tintLook(look, amt) {
   return { ...look, shirt: shadeHex(look.shirt, amt), paddle: shadeHex(look.paddle || look.shirt, amt) };
 }
@@ -541,6 +564,15 @@ export class Game {
       document.querySelectorAll(".diff button").forEach((b) => b.classList.toggle("on", b.dataset.diff === diff));
       this.diff = this.menuDiff = diff;
     }
+    const room = q.get("room");
+    if (room) {
+      this.joinOnline(room);
+      return;
+    }
+    if (q.get("mode") === "online") {
+      this.openOnline();
+      return;
+    }
     const mode = { singles: "cpu", cpu: "cpu", doubles: "doubles", "2p": "p2", p2: "p2", tournament: "challenge" }[q.get("mode")];
     if (!mode) return;
     if (mode === "challenge") this.openChallenge();
@@ -555,6 +587,460 @@ export class Game {
 
   clearDeepLink() {
     if (location.search) history.replaceState(null, "", location.pathname + location.hash);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Online play. One browser hosts and runs the match exactly as it runs a local
+  // one; the friend's browser draws what the host sends, mirrored so that both
+  // players see themselves at the near end. The friend moves their own player
+  // locally (no input lag on footwork) and reports the position; the host owns
+  // the ball, the rules and the score.
+
+  loadNet() {
+    if (!this.netModule) this.netModule = import(`./net.js${new URL(import.meta.url).search}`);
+    return this.netModule;
+  }
+
+  openOnline() {
+    $("menu").hidden = true;
+    $("howto").hidden = true;
+    $("roster").hidden = true;
+    $("challenge").hidden = true;
+    $("online").hidden = false;
+    this.showOnline("start", "Play a friend online", "Make a room, send your friend the link, and play a game to 11. No account, nothing to install.");
+    this.loadNet();
+  }
+
+  showOnline(step, title, text, hint = "") {
+    document.querySelectorAll("#online .online-step").forEach((el) => (el.hidden = el.dataset.step !== step));
+    $("online-title").textContent = title;
+    $("online-text").textContent = text;
+    $("online-hint").textContent = hint;
+    $("online").dataset.step = step;
+  }
+
+  async hostOnline() {
+    let net;
+    try {
+      net = await this.loadNet();
+    } catch {
+      this.showOnline("error", "Couldn't load online play", "Check your connection and try again.");
+      return;
+    }
+    const code = net.newRoomCode();
+    this.beginSession(net, code, "host");
+    $("online-link").value = `${location.origin}/?room=${code}`;
+    $("online-room").textContent = code;
+    $("btn-online-copy").textContent = "Copy";
+    $("btn-online-share").hidden = typeof navigator.share !== "function";
+    this.showOnline("hosting", "Send this link to your friend", "The match starts as soon as they open it. Keep this tab open.", "Opening the room…");
+    if (typeof gtag === "function") gtag("event", "online_host");
+  }
+
+  async joinOnline(raw) {
+    $("menu").hidden = true;
+    $("online").hidden = false;
+    let net;
+    try {
+      net = await this.loadNet();
+    } catch {
+      this.showOnline("error", "Couldn't load online play", "Check your connection and try again.");
+      return;
+    }
+    const code = net.cleanRoomCode(raw);
+    if (!code) {
+      this.showOnline("start", "Play a friend online", "Make a room, send your friend the link, and play a game to 11.", "That code doesn't look right. Room codes are 5 letters and numbers.");
+      return;
+    }
+    this.beginSession(net, code, "guest");
+    this.showOnline("wait", `Joining room ${code}`, "Connecting to your friend…");
+    if (typeof gtag === "function") gtag("event", "online_join");
+  }
+
+  beginSession(net, code, role) {
+    if (this.online) this.leaveOnline();
+    this.online = {
+      role,
+      code,
+      pt: 0,
+      lastPt: -1,
+      lastSend: 0,
+      remote: null,
+      snaps: [],
+      offset: null,
+      hostCharging: false,
+      downAt: 0,
+      hudKey: "",
+      peerLook: null,
+      started: false,
+    };
+    const session = new net.NetSession({
+      code,
+      role,
+      onStatus: (state, detail) => this.onNetStatus(session, state, detail),
+      onMessage: (msg) => this.onNetMessage(session, msg),
+    });
+    this.online.session = session;
+    session.start();
+  }
+
+  onNetStatus(session, state, detail) {
+    if (this.online?.session !== session) return;
+    if (state === "waiting") {
+      $("online-hint").textContent = "Waiting for your friend to open the link…";
+    } else if (state === "joining") {
+      this.showOnline("wait", "Friend found", "Connecting…");
+    } else if (state === "ready") {
+      this.online.transport = detail;
+      this.netSend({ t: "hello", look: this.youLook }, true);
+      if (typeof gtag === "function") gtag("event", "online_ready", { transport: detail });
+    } else if (state === "closed") {
+      const reasons = {
+        "peer-left": "Your friend left the match.",
+        "no-host": "That room is closed. Ask your friend to make a new one and send you the link.",
+        full: "That room already has two players.",
+        taken: "That room code is already in use. Make a new room.",
+        lost: "The connection to your friend dropped.",
+        error: "Couldn't reach the online server. Check your connection and try again.",
+      };
+      this.online = null;
+      this.toMenu();
+      $("menu").hidden = true;
+      $("online").hidden = false;
+      this.showOnline("error", "Match ended", reasons[detail] || reasons.lost);
+    }
+  }
+
+  leaveOnline() {
+    const o = this.online;
+    this.online = null;
+    o?.session?.leave();
+  }
+
+  netSend(msg, reliable = false) {
+    this.online?.session?.send(msg, reliable);
+  }
+
+  onNetMessage(session, msg) {
+    const o = this.online;
+    if (!o || o.session !== session || typeof msg?.t !== "string") return;
+    const host = o.role === "host";
+    switch (msg.t) {
+      case "hello":
+        o.peerLook = msg.look;
+        if (host && !o.started) this.startOnlineMatch();
+        break;
+      case "start":
+        if (!host) this.startGuestMatch(msg);
+        break;
+      case "rematch":
+        if (host && this.screen === "over") this.startOnlineMatch();
+        break;
+      case "i": {
+        if (!host) break;
+        const num = (v, lo, hi) => (Number.isFinite(+v) ? clamp(+v, lo, hi) : 0);
+        o.remote = {
+          pt: msg.pt | 0,
+          x: num(msg.x, -3, CW + 3),
+          y: num(msg.y, NET_Y, CL + 4),
+          vx: num(msg.vx, -30, 30),
+          vy: num(msg.vy, -30, 30),
+          ax: num(msg.ax, -1, 1),
+          ay: num(msg.ay, -1, 1),
+          touch: !!msg.touch,
+        };
+        break;
+      }
+      case "d":
+        if (host) this.beginCharge(this.far);
+        break;
+      case "u":
+        if (host && this.far.charging) {
+          this.far.charge = clamp(Number(msg.power) || 0.08, 0.08, 1);
+          this.releaseSwing(this.far);
+        }
+        break;
+      case "s":
+        if (!host) this.onSnapshot(msg);
+        break;
+      case "flash":
+        if (!host && typeof msg.text === "string") this.flash(msg.text.slice(0, 24), clamp(Number(msg.d) || 1, 0.3, 2));
+        break;
+      case "toast":
+        if (!host && typeof msg.text === "string") this.toast(msg.text.slice(0, 60), true);
+        break;
+      case "sfx": {
+        if (host || !ONLINE_SOUNDS.includes(msg.n)) break;
+        // Your point is their fault and the other way round.
+        const name = msg.n === "cheer" ? "fault" : msg.n === "fault" ? "cheer" : msg.n;
+        const args = Array.isArray(msg.a) ? msg.a.slice(0, 2).map((a) => (typeof a === "number" ? a : String(a).slice(0, 12))) : [];
+        Sfx.prototype[name].apply(this.sfx, args);
+        break;
+      }
+      case "fx":
+        if (!host) {
+          const n = clamp(msg.n | 0, 0, 16);
+          const color = /^#[0-9a-f]{6}$/i.test(msg.color) ? msg.color : "#d4e157";
+          this.spawnBurst(Number(msg.x) || 0, Number(msg.y) || 0, Number(msg.z) || 0, color, n);
+        }
+        break;
+      case "over":
+        if (!host) this.showGuestOver(msg);
+        break;
+    }
+  }
+
+  startOnlineMatch() {
+    const o = this.online;
+    o.started = true;
+    o.remote = null;
+    this.oppLook = this.distinctLook(sanitizeLook(o.peerLook) || randomLook());
+    this.forwardSounds();
+    this.startMatch("online");
+    this.netSend({ t: "start", venue: this.venue.id, look: this.youLook }, true);
+  }
+
+  startGuestMatch(msg) {
+    const o = this.online;
+    o.started = true;
+    o.snaps = [];
+    o.offset = null;
+    o.lastPt = -1;
+    o.hudKey = "";
+    this.venue = VENUES.find((v) => v.id === msg.venue) || this.venue;
+    this.oppLook = this.distinctLook(sanitizeLook(msg.look) || randomLook());
+    this.startMatch("online");
+  }
+
+  /** Two players in the same default kit would be hard to tell apart. */
+  distinctLook(look) {
+    if (look.shirt !== this.youLook.shirt) return look;
+    const shirt = SHIRTS.find((c) => c !== this.youLook.shirt && c !== "#f4f1e8" && c !== "#d4e157") || "#e45a43";
+    return { ...look, shirt, paddle: shirt };
+  }
+
+  forwardSounds() {
+    if (this.soundsForwarded) return;
+    this.soundsForwarded = true;
+    for (const name of ONLINE_SOUNDS) {
+      this.sfx[name] = (...args) => {
+        Sfx.prototype[name].apply(this.sfx, args);
+        if (this.online?.role === "host" && this.screen === "play") this.netSend({ t: "sfx", n: name, a: args }, true);
+      };
+    }
+  }
+
+  rematch() {
+    if (this.mode !== "online") {
+      this.startMatch(this.mode);
+      return;
+    }
+    if (!this.online) return;
+    if (this.online.role === "host") this.startOnlineMatch();
+    else {
+      this.netSend({ t: "rematch" }, true);
+      $("over-stats").textContent = "Waiting for your friend…";
+    }
+  }
+
+  showGuestOver(msg) {
+    const mine = msg.b | 0;
+    const theirs = msg.a | 0;
+    this.screen = "over";
+    this.phase = "dead";
+    $("over").hidden = false;
+    $("pause").hidden = true;
+    $("over-title").textContent = mine > theirs ? "You win" : "Your friend wins";
+    $("over-sub").textContent = `${mine} – ${theirs}`;
+    $("over-kicker").textContent = "Online match · game to 11";
+    $("over-stats").textContent = `Longest rally ${msg.longest | 0}`;
+    $("tourney-upgrade").hidden = true;
+    $("btn-rematch").hidden = false;
+    $("btn-next-challenge").hidden = true;
+    this.sfx.whistle();
+    this.sfx.crowd(1.6);
+  }
+
+  netTick(now) {
+    const o = this.online;
+    if (!o?.started || this.screen !== "play" || now - o.lastSend < 33) return;
+    o.lastSend = now;
+    if (o.role === "host") this.netSend(this.snapshot(now));
+    else {
+      const p = this.near;
+      const { ax, ay } = this.aimAxes(p);
+      this.netSend({ t: "i", pt: o.lastPt, x: CW - p.x, y: CL - p.y, vx: -p.vx, vy: -p.vy, ax, ay, touch: this.isTouchInput() ? 1 : 0 });
+    }
+  }
+
+  snapshot(now) {
+    const r = (v) => Math.round((v || 0) * 1000) / 1000;
+    const pl = (p) => [r(p.x), r(p.y), r(p.vx), r(p.vy), r(p.charge), p.charging ? 1 : 0, r(p.swing), p.swinging ? 1 : 0, p.hand, r(p.crouch), r(p.twist), p.shotKind, p.chargeDir];
+    const b = this.ball;
+    const m = this.match;
+    const hb = this.highlightBox;
+    return {
+      t: "s",
+      ht: Math.round(now),
+      pt: this.online.pt,
+      ph: this.phase,
+      rl: this.rallyLen,
+      m: [m.near, m.far, m.server, m.serveBounced ? 1 : 0, m.returnBounced ? 1 : 0, m.serverNum, m.startOneServe ? 1 : 0, m.switched ? 1 : 0],
+      b: [r(b.x), r(b.y), r(b.z), r(b.vx), r(b.vy), r(b.vz), b.live ? 1 : 0, b.held ? 1 : 0, b.lastHit, b.lastBounceSide, b.bouncesSide],
+      hb: hb ? [hb.receiver, hb.fromRight ? 1 : 0] : null,
+      n: pl(this.near),
+      f: pl(this.far),
+    };
+  }
+
+  onSnapshot(s) {
+    const o = this.online;
+    if (!Array.isArray(s.b) || !Array.isArray(s.n) || !Array.isArray(s.f) || !Array.isArray(s.m)) return;
+    const now = performance.now();
+    // Best guess at (clock difference + quickest trip): the lowest gap seen,
+    // allowed to creep up slowly in case the route gets slower.
+    const gap = now - s.ht;
+    o.offset = o.offset == null ? gap : Math.min(gap, o.offset + 0.5);
+    const last = o.snaps[o.snaps.length - 1];
+    if (last && s.ht <= last.ht) return;
+    o.snaps.push(s);
+    if (o.snaps.length > 30) o.snaps.shift();
+    o.hostCharging = !!s.f[5];
+    if (s.pt !== o.lastPt) {
+      // New point: the host has placed both players; take our spot from it.
+      o.lastPt = s.pt;
+      const me = this.near;
+      me.x = CW - s.f[0];
+      me.y = CL - s.f[1];
+      me.vx = me.vy = 0;
+      me.charging = false;
+      me.charge = 0;
+    }
+  }
+
+  applySnapshots() {
+    const o = this.online;
+    const snaps = o.snaps;
+    if (!snaps.length) return;
+    const rt = performance.now() - o.offset - ONLINE_DELAY_MS;
+    let i = snaps.length - 1;
+    while (i > 0 && snaps[i - 1].ht > rt) i--;
+    const b = snaps[i];
+    const a = i > 0 ? snaps[i - 1] : b;
+    const span = b.ht - a.ht;
+    const k = span > 0 ? clamp((rt - a.ht) / span, 0, 1) : 1;
+    const flip = (side) => (side === "near" ? "far" : side === "far" ? "near" : side);
+    const mix = (u, v) => lerp(Number(u) || 0, Number(v) || 0, k);
+
+    const ball = this.ball;
+    const jump = Math.hypot(a.b[0] - b.b[0], a.b[1] - b.b[1]) > 6;
+    const ab = jump ? b.b : a.b;
+    ball.x = CW - mix(ab[0], b.b[0]);
+    ball.y = CL - mix(ab[1], b.b[1]);
+    ball.z = mix(ab[2], b.b[2]);
+    ball.vx = -mix(ab[3], b.b[3]);
+    ball.vy = -mix(ab[4], b.b[4]);
+    ball.vz = mix(ab[5], b.b[5]);
+    ball.live = !!b.b[6];
+    ball.held = !!b.b[7];
+    ball.lastHit = flip(b.b[8]);
+    ball.lastBounceSide = flip(b.b[9]);
+    ball.bouncesSide = b.b[10] | 0;
+    if (ball.held) ball.trail = [];
+    else {
+      ball.trail.push({ x: ball.x, y: ball.y, z: ball.z });
+      if (ball.trail.length > 10) ball.trail.shift();
+    }
+
+    // The host's own player is our opponent at the far end.
+    const opp = this.far;
+    const an = a.n;
+    const bn = b.n;
+    opp.x = CW - mix(an[0], bn[0]);
+    opp.y = CL - mix(an[1], bn[1]);
+    opp.vx = -mix(an[2], bn[2]);
+    opp.vy = -mix(an[3], bn[3]);
+    opp.charge = Number(bn[4]) || 0;
+    opp.charging = !!bn[5];
+    opp.swing = Number(bn[6]) || 0;
+    opp.swinging = !!bn[7];
+    opp.hand = bn[8] === -1 ? -1 : 1;
+    opp.crouch = Number(bn[9]) || 0.34;
+    opp.twist = Number(bn[10]) || 0;
+    opp.shotKind = String(bn[11] || "dink");
+    opp.chargeDir = bn[12] === -1 ? -1 : 1;
+
+    // Our own player: position and charge are ours; the swing is the host's call.
+    const me = this.near;
+    const bf = b.f;
+    me.swing = Number(bf[6]) || 0;
+    me.swinging = !!bf[7];
+    me.crouch = Number(bf[9]) || 0.34;
+    me.twist = Number(bf[10]) || 0;
+    if (!me.charging) {
+      me.hand = bf[8] === -1 ? -1 : 1;
+      me.shotKind = String(bf[11] || "dink");
+    }
+
+    const m = this.match;
+    m.near = b.m[1] | 0;
+    m.far = b.m[0] | 0;
+    m.server = flip(b.m[2]);
+    m.serveBounced = !!b.m[3];
+    m.returnBounced = !!b.m[4];
+    m.serverNum = b.m[5] | 0 || 1;
+    m.startOneServe = !!b.m[6];
+    m.switched = !!b.m[7];
+    this.phase = ["serve", "rally", "dead"].includes(b.ph) ? b.ph : "dead";
+    this.rallyLen = b.rl | 0;
+    this.highlightBox = b.hb ? { receiver: flip(b.hb[0]), fromRight: !!b.hb[1] } : null;
+    const hudKey = `${m.near}|${m.far}|${m.server}|${m.serveBounced}|${m.returnBounced}|${this.rallyLen}`;
+    if (hudKey !== o.hudKey) {
+      o.hudKey = hudKey;
+      this.syncHud();
+    }
+  }
+
+  updateGuest(dt) {
+    this.time += dt;
+    this.shake *= 0.86;
+    this.camX = lerp(this.camX, clamp((this.ball.x - 10) * 6, -28, 28), 0.08);
+    if (this.banner.t > 0) {
+      this.banner.t -= dt;
+      if (this.banner.t <= 0) $("banner").classList.remove("show");
+    }
+    if (this.toastT > 0) {
+      this.toastT -= dt;
+      if (this.toastT <= 0) $("toast").classList.remove("show");
+    }
+    this.updateFx(dt);
+    this.applySnapshots();
+
+    const me = this.near;
+    if (this.phase === "serve" || this.phase === "rally") {
+      this.steer(me, dt, true);
+      this.tickCharge(me, dt);
+      this.keepOnCourt(me);
+    } else {
+      me.vx = me.vy = 0;
+      me.charging = false;
+      me.charge = 0;
+    }
+    // While you hold the swing, the host fires it for you when the ball reaches
+    // you; once it has, stop showing the meter.
+    const settle = 250 + (this.online.session?.rtt || 100);
+    if (me.charging && !this.online.hostCharging && performance.now() - this.online.downAt > settle) {
+      me.charging = false;
+      me.charge = 0;
+    }
+
+    if (this.phase === "serve" && this.serverPlayer() === this.near) {
+      this.toastT = Math.max(this.toastT, 0.2);
+      if (!$("toast").classList.contains("show")) {
+        const touch = this.isTouchInput();
+        this.toast(touch ? "Tap or hold SWING to serve underhand" : "Hold SPACE / click to serve underhand", true);
+      }
+    }
   }
 
   makePlayer(side) {
@@ -837,6 +1323,32 @@ export class Game {
     $("btn-scout-play").onclick = () => this.startChallenge(this.scoutIndex);
     $("btn-scout-back").onclick = () => this.closeScout();
     $("btn-p2").onclick = () => this.openRoster("p2");
+    $("btn-online").onclick = () => this.openOnline();
+    const local = location.hostname === "localhost" || location.hostname === "127.0.0.1";
+    fetch(`${local ? `http://${location.hostname}:8787` : ""}/rooms/health`, { cache: "no-store" })
+      .then((r) => r.ok && r.text())
+      .then((t) => ($("btn-online").hidden = t !== "ok"))
+      .catch(() => {});
+    $("btn-online-host").onclick = () => this.hostOnline();
+    $("online-join-form").onsubmit = (e) => {
+      e.preventDefault();
+      this.joinOnline($("online-code").value);
+    };
+    $("btn-online-copy").onclick = () => {
+      const input = $("online-link");
+      const done = () => ($("btn-online-copy").textContent = "Copied");
+      if (navigator.clipboard?.writeText) navigator.clipboard.writeText(input.value).then(done, () => input.select());
+      else {
+        input.select();
+        document.execCommand?.("copy");
+        done();
+      }
+    };
+    $("btn-online-share").onclick = () =>
+      navigator.share?.({ title: "VS Pickleball", text: "Play me at pickleball:", url: $("online-link").value }).catch(() => {});
+    $("btn-online-back").onclick = () => this.toMenu();
+    // Closing the tab tells your friend straight away instead of after a timeout.
+    window.addEventListener("pagehide", () => this.online && this.leaveOnline());
     $("btn-start-match").onclick = () => this.confirmRoster();
     $("btn-random-look").onclick = () => this.rerollLook("you");
     $("btn-random-look-opp").onclick = () => this.rerollLook("opp");
@@ -856,7 +1368,7 @@ export class Game {
     $("btn-resume").onclick = () => this.togglePause(false);
     $("btn-menu").onclick = () => this.toMenu();
     $("btn-over-menu").onclick = () => this.toMenu();
-    $("btn-rematch").onclick = () => this.startMatch(this.mode);
+    $("btn-rematch").onclick = () => this.rematch();
     $("btn-mute").onclick = () => this.toggleMute();
     $("btn-full").onclick = () => this.toggleFull();
     document.querySelectorAll(".diff button").forEach((b) => {
@@ -1056,8 +1568,10 @@ export class Game {
     this.paused = false;
     this.replay = null;
     this.tape = [];
-    this.applyBuild(this.near, mode === "challenge" ? this.challengeBuild() : this.youBuild);
-    this.applyBuild(this.far, this.oppBuild);
+    // Online, both players get the same balanced build so the match is about play.
+    const online = mode === "online";
+    this.applyBuild(this.near, online ? ONLINE_BUILD : mode === "challenge" ? this.challengeBuild() : this.youBuild);
+    this.applyBuild(this.far, online ? ONLINE_BUILD : this.oppBuild);
     this.applyLook(this.near, this.youLook);
     this.applyLook(this.far, this.oppLook);
     if (mode === "doubles") {
@@ -1082,9 +1596,15 @@ export class Game {
     hud.classList.toggle("p2-layout", mode === "p2");
     $("keys-p2").hidden = mode !== "p2";
     $("keys-label").textContent = mode === "p2" ? "player 1 · tap dink · hold speed-up" : "tap dink · hold speed-up";
-    $("name-near").textContent = mode === "doubles" ? "YOU" : this.youBuild.name || "YOU";
-    $("name-far").textContent =
-      mode === "p2" ? this.oppBuild.name || "P2" : mode === "doubles" ? "THEM" : this.oppBuild.name || "CPU";
+    $("name-near").textContent = mode === "doubles" || online ? "YOU" : this.youBuild.name || "YOU";
+    $("name-far").textContent = online
+      ? "FRIEND"
+      : mode === "p2"
+        ? this.oppBuild.name || "P2"
+        : mode === "doubles"
+          ? "THEM"
+          : this.oppBuild.name || "CPU";
+    $("online").hidden = true;
     $("btn-next-challenge").hidden = true;
     this.match = this.freshMatch();
     this.meta = this.emptyMeta();
@@ -1198,7 +1718,7 @@ export class Game {
   }
 
   isHuman(p) {
-    return p === this.near || (this.mode === "p2" && p === this.far);
+    return p === this.near || ((this.mode === "p2" || this.mode === "online") && p === this.far);
   }
 
   closestOpp(p) {
@@ -1235,6 +1755,11 @@ export class Game {
       if (this.keys.has("ArrowRight")) ax += 1;
       if (this.keys.has("ArrowUp")) ay += 1;
       if (this.keys.has("ArrowDown")) ay -= 1;
+    } else if (this.mode === "online" && p === this.far && this.online?.remote) {
+      // The friend aims on a court drawn from their own end: their left is our right,
+      // and "up" still means deeper, which humanLand already reads the same way for far.
+      ax = -this.online.remote.ax;
+      ay = this.online.remote.ay;
     }
     return { ax: clamp(ax, -1, 1), ay: clamp(ay, -1, 1) };
   }
@@ -1430,6 +1955,8 @@ export class Game {
 
   toMenu() {
     this.clearDeepLink();
+    if (this.online) this.leaveOnline();
+    $("online").hidden = true;
     if (this.challengeOriginalVenue) this.venue = this.challengeOriginalVenue;
     this.screen = "menu";
     this.demo = true;
@@ -1542,6 +2069,11 @@ export class Game {
 
   togglePause(force) {
     if (this.screen !== "play") return;
+    if (this.mode === "online") {
+      // The match keeps running for your friend; the panel is just a way out.
+      $("pause").hidden = force == null ? !$("pause").hidden : !force;
+      return;
+    }
     this.paused = force == null ? !this.paused : force;
     $("pause").hidden = !this.paused;
   }
@@ -1859,6 +2391,7 @@ export class Game {
   }
 
   resetPoint() {
+    if (this.online?.role === "host") this.online.pt += 1;
     const m = this.match;
     m.serveBounced = false;
     m.returnBounced = false;
@@ -1957,10 +2490,22 @@ export class Game {
     if (this.pendingHit && this.pendingHit.p === p) this.pendingHit = null;
     p.charging = true;
     if (p.charge < 0.05) p.charge = 0.05;
+    if (this.online?.role === "guest" && p === this.near) {
+      this.online.downAt = performance.now();
+      this.netSend({ t: "d" }, true);
+    }
   }
 
   releaseSwing(p) {
     if (!p.charging && p.charge <= 0) return;
+    if (this.online?.role === "guest" && p === this.near) {
+      // The host plays the shot; send the power the player actually let go at.
+      const power = clamp(p.charge, 0.08, 1);
+      p.charging = false;
+      p.charge = 0;
+      this.netSend({ t: "u", power }, true);
+      return;
+    }
     const tutorialServe = this.tutorial.active && this.tutorial.step === 1 && p === this.near && this.phase === "serve";
     p.charging = false;
     const power = clamp(p.charge, 0.08, 1);
@@ -2032,7 +2577,8 @@ export class Game {
     if (!b.live) return;
     const sideOk = p.side === "near" ? b.y <= NET_Y + 0.55 : b.y >= NET_Y - 0.55;
     if (!sideOk || !this.canContact(p, b)) {
-      const touchEarly = p === this.near && this.isTouchInput() && this.incoming(p);
+      const onPhone = p === this.near ? this.isTouchInput() : this.mode === "online" && !!this.online?.remote?.touch;
+      const touchEarly = onPhone && this.incoming(p);
       if (this.needsBounce(p)) {
         this.pendingHit = { p, power, until: this.time + 0.7 };
         if (p === this.near && this.screen === "play") this.toast("Let it bounce");
@@ -2236,24 +2782,12 @@ export class Game {
     } else {
       this.steer(this.near, dt, true);
       if (this.mode === "p2") this.steer(this.far, dt, false);
+      else if (this.mode === "online") this.followRemote(this.far);
       else this.ai(dt);
     }
 
     for (const p of this.allPlayers()) {
-      if (p.charging) {
-        p.chargeDir = p.chargeDir || 1;
-        const kit = Math.abs(p.y - (p.side === "near" ? 15 : 29)) < 3.2;
-        p.charge += dt * (kit ? 2.15 : 1.55) * p.chargeDir;
-        if (p.charge >= 1) {
-          p.charge = 1;
-          p.chargeDir = -1;
-        } else if (p.charge <= 0) {
-          p.charge = 0;
-          p.chargeDir = 1;
-        }
-        p.hand = this.handFor(p, this.ball);
-        p.shotKind = p.charge > 0.36 ? "speedup" : "dink";
-      }
+      this.tickCharge(p, dt);
       if (
         this.isHuman(p) &&
         p.charging &&
@@ -2281,20 +2815,55 @@ export class Game {
       p.crouch = lerp(p.crouch ?? 0.34, wantCrouch, 0.2);
       const wantTwist = (p.hand || 1) * (0.16 + coil * 0.95 + punch * 0.5);
       p.twist = lerp(p.twist ?? 0.1, wantTwist, 0.24);
-      if (p.side === "near") {
-        p.x = clamp(p.x, -2.5, CW + 2.5);
-        p.y = clamp(p.y, -3.2, NET_Y - 0.35);
-      } else {
-        p.x = clamp(p.x, -2.5, CW + 2.5);
-        p.y = clamp(p.y, NET_Y + 0.35, CL + 3.2);
-      }
-      if (this.phase === "serve" && p === this.serverPlayer()) {
-        // Server stays between the centre line and the sideline of the serving half.
-        const highX = this.evenScore() === (p.side === "near");
-        p.x = highX ? clamp(p.x, CW / 2 + 0.3, CW - 0.3) : clamp(p.x, 0.3, CW / 2 - 0.3);
-      }
+      this.keepOnCourt(p);
       if (p.kitchenWatch && this.time > p.kitchenWatch) p.kitchenWatch = 0;
     }
+  }
+
+  tickCharge(p, dt) {
+    if (!p.charging) return;
+    p.chargeDir = p.chargeDir || 1;
+    const kit = Math.abs(p.y - (p.side === "near" ? 15 : 29)) < 3.2;
+    p.charge += dt * (kit ? 2.15 : 1.55) * p.chargeDir;
+    if (p.charge >= 1) {
+      p.charge = 1;
+      p.chargeDir = -1;
+    } else if (p.charge <= 0) {
+      p.charge = 0;
+      p.chargeDir = 1;
+    }
+    p.hand = this.handFor(p, this.ball);
+    p.shotKind = p.charge > 0.36 ? "speedup" : "dink";
+  }
+
+  keepOnCourt(p) {
+    if (p.side === "near") {
+      p.x = clamp(p.x, -2.5, CW + 2.5);
+      p.y = clamp(p.y, -3.2, NET_Y - 0.35);
+    } else {
+      p.x = clamp(p.x, -2.5, CW + 2.5);
+      p.y = clamp(p.y, NET_Y + 0.35, CL + 3.2);
+    }
+    if (this.phase === "serve" && p === this.serverPlayer()) {
+      // Server stays between the centre line and the sideline of the serving half.
+      const highX = this.evenScore() === (p.side === "near");
+      p.x = highX ? clamp(p.x, CW / 2 + 0.3, CW - 0.3) : clamp(p.x, 0.3, CW / 2 - 0.3);
+    }
+  }
+
+  /** Online host: the friend moves their own player and reports where it is.
+   *  Reports from before the current point started are ignored, so the serve
+   *  setup is not undone by a position still in flight. */
+  followRemote(p) {
+    const r = this.online?.remote;
+    if (!r || r.pt !== this.online.pt) {
+      p.vx = p.vy = 0;
+      return;
+    }
+    p.x = r.x;
+    p.y = r.y;
+    p.vx = r.vx;
+    p.vy = r.vy;
   }
 
   steer(p, dt, isNear) {
@@ -2362,7 +2931,7 @@ export class Game {
   ai(dt) {
     const bots = [];
     if (this.demo || this.screen === "menu") bots.push(this.near, this.far);
-    else if (this.mode === "p2") {
+    else if (this.mode === "p2" || this.mode === "online") {
       /* human vs human */
     } else if (this.isDoubles()) bots.push(this.nearB, this.far, this.farB);
     else bots.push(this.far);
@@ -2858,7 +3427,8 @@ export class Game {
       this.toast(`Bonus · attack win ${Math.min(o.current, o.target)}/${o.target}`, true);
     }
     this.syncHud();
-    if (highlight && this.tape.length >= 18) {
+    // No highlight replays online: only one side could skip them.
+    if (highlight && this.tape.length >= 18 && this.mode !== "online") {
       this.beginReplay(highlight);
       return;
     }
@@ -2875,11 +3445,17 @@ export class Game {
       this.phase = "dead";
       this.deadT = 999;
       $("over").hidden = false;
-      $("over-title").textContent = a > b ? "You win" : this.mode === "p2" ? "Player 2 wins" : "CPU wins";
+      $("over-title").textContent =
+        a > b ? "You win" : this.mode === "p2" ? "Player 2 wins" : this.mode === "online" ? "Your friend wins" : "CPU wins";
       const m = this.meta;
       $("over-sub").textContent = `${a} – ${b}`;
       $("over-kicker").textContent = `Game to ${target} · win by 2`;
       $("over-stats").textContent = `Longest rally ${m.longest} · ${m.aces} ace${m.aces === 1 ? "" : "s"} · ${m.winners} winner${m.winners === 1 ? "" : "s"} · ${m.speedups} speed-ups`;
+      if (this.mode === "online") {
+        $("over-kicker").textContent = "Online match · game to 11";
+        $("over-stats").textContent = `Longest rally ${m.longest}`;
+        this.netSend({ t: "over", a, b, longest: m.longest }, true);
+      }
       $("tourney-upgrade").hidden = true;
       $("btn-rematch").hidden = false;
       $("btn-next-challenge").hidden = true;
@@ -3015,7 +3591,9 @@ export class Game {
           : "YOU"
         : this.mode === "p2"
           ? "P2"
-          : this.isDoubles() && this.match.serverNum === 2
+          : this.mode === "online"
+            ? "FRIEND"
+            : this.isDoubles() && this.match.serverNum === 2
             ? "CPU 2"
             : "CPU";
     const even = this.evenScore();
@@ -3086,6 +3664,8 @@ export class Game {
 
   flash(text, t) {
     if (this.demo) return;
+    // Calls like OUT, KITCHEN and POINT read the same from either end of the court.
+    if (this.online?.role === "host" && this.screen === "play") this.netSend({ t: "flash", text, d: t }, true);
     this.banner.text = text;
     this.banner.t = t;
     $("banner").textContent = text;
@@ -3096,6 +3676,7 @@ export class Game {
    *  ones ("Let it bounce", "Whiff", serve reminders) just cover the court. */
   toast(text, important = false) {
     if (this.demo) return;
+    if (this.online?.role === "host" && /switch sides|Net cord/.test(text)) this.netSend({ t: "toast", text }, true);
     if (!important && this.isTouchInput() && this.screen === "play") return;
     $("toast").textContent = text;
     $("toast").classList.add("show");
@@ -3111,12 +3692,17 @@ export class Game {
       this.hitStop -= dt;
       this.updateFx(dt);
     } else if (!this.paused && this.screen !== "over") this.update(dt);
+    if (this.online) this.netTick(now);
     this.syncActionButton();
     this.draw();
     requestAnimationFrame(this.loop);
   }
 
   update(dt) {
+    if (this.online?.role === "guest" && this.screen === "play") {
+      this.updateGuest(dt);
+      return;
+    }
     this.time += dt;
     this.shake *= 0.86;
     this.camX = lerp(this.camX, clamp((this.ball.x - 10) * 6, -28, 28), 0.08);
@@ -3302,6 +3888,7 @@ export class Game {
   }
 
   spawnBurst(x, y, z, color, n) {
+    if (this.online?.role === "host") this.netSend({ t: "fx", x: CW - x, y: CL - y, z, color, n }, true);
     for (let i = 0; i < n; i++) {
       const a = Math.random() * TAU;
       this.fx.push({
