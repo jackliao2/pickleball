@@ -12,6 +12,8 @@ const DIFF = {
   normal: { err: 1.25, react: 0.28, reach: 0.8, chase: 1.1, miss: 0.1 },
   hard: { err: 0.6, react: 0.15, reach: 0.94, chase: 0.38, miss: 0.025 },
 };
+// Your doubles partner skips the difficulty handicaps and never stands and watches a ball go by.
+const PARTNER_AI = { ...DIFF.hard, miss: 0 };
 
 const STAT_LIST = [
   ["speed", "Speed", "Foot speed around the court"],
@@ -1579,7 +1581,7 @@ export class Game {
   }
 
   isCpuSide(p) {
-    if (p === this.near) return false;
+    if (p.side === "near") return false;
     return this.mode === "cpu" || this.mode === "doubles" || this.mode === "challenge";
   }
 
@@ -1911,11 +1913,12 @@ export class Game {
     const rec = this.receiverPlayer();
     const srvPartner = srv.side === "near" ? (srv === this.near ? this.nearB : this.near) : srv === this.far ? this.farB : this.far;
     const recPartner = rec.side === "far" ? (rec === this.far ? this.farB : this.far) : rec === this.near ? this.nearB : this.near;
+    // Serving pair both start back (the return must bounce); receiving pair is one up, one back.
     if (srv.side === "near") {
       srv.x = even ? 15.2 : 4.8;
       srv.y = -1.15;
       srvPartner.x = even ? 4.8 : 15.2;
-      srvPartner.y = kitchenSafeY("near");
+      srvPartner.y = -0.8;
       rec.x = even ? 5 : 15;
       rec.y = 40.6;
       recPartner.x = even ? 15 : 5;
@@ -1924,7 +1927,7 @@ export class Game {
       srv.x = even ? 4.8 : 15.2;
       srv.y = 45.15;
       srvPartner.x = even ? 15.2 : 4.8;
-      srvPartner.y = kitchenSafeY("far");
+      srvPartner.y = CL + 0.8;
       rec.x = even ? 15 : 5;
       rec.y = 3.2;
       recPartner.x = even ? 5 : 15;
@@ -2089,10 +2092,10 @@ export class Game {
     let ty = land.ty;
     const flight = this.shotFlight(p, kind, power);
 
-    const cpu = this.isCpuSide(p);
+    const ai = this.isCpuSide(p) ? DIFF[this.diff] : this.isHuman(p) ? null : PARTNER_AI;
     const spread = p.aimSpread ?? lerp(4.4, 0.16, (p.stats?.angle ?? 6) / 10);
-    let noise = cpu
-      ? DIFF[this.diff].err * 0.85 * spread
+    let noise = ai
+      ? ai.err * 0.85 * spread
       : spread * 0.72;
     p.shotKind = kind;
     this.lastKind = kind;
@@ -2101,6 +2104,7 @@ export class Game {
     b.lastBounceSide = null;
     b.bouncesSide = 0;
     this.rallyLen += 1;
+    $("chip-rally").textContent = `Rally ${this.rallyLen}`;
     if (this.tutorial.active && this.tutorial.step === 2 && p === this.near && this.rallyLen >= 3) {
       this.finishTutorial();
     }
@@ -2121,14 +2125,16 @@ export class Game {
 
   launchTo(b, tx, ty, t, noise, style, p) {
     const attack = style === "speedup" || style === "smash";
+    // Direction comes from the hitter, not the ball: a long reach can meet the ball just past the tape.
+    const toFar = p ? p.side === "near" : b.y < NET_Y;
     if (attack) {
-      if (b.y < NET_Y) ty = clamp(ty, NET_Y + 3.3, 33);
+      if (toFar) ty = clamp(ty, NET_Y + 3.3, 33);
       else ty = clamp(ty, 11, NET_Y - 3.3);
     } else if (style === "dink") {
-      if (b.y < NET_Y) ty = clamp(ty, NET_Y + 4.2, NET_Y + 7.1);
+      if (toFar) ty = clamp(ty, NET_Y + 4.2, NET_Y + 7.1);
       else ty = clamp(ty, NET_Y - 7.1, NET_Y - 4.2);
     } else if (style !== "serve") {
-      if (b.y < NET_Y) ty = clamp(ty, NET_Y + 5, 43);
+      if (toFar) ty = clamp(ty, NET_Y + 5, 43);
       else ty = clamp(ty, 1, NET_Y - 5);
     }
     const nY = noise * (style === "dink" ? 0.35 : 1);
@@ -2191,8 +2197,8 @@ export class Game {
         if (this.heightAtNet(b.y, z0, vy, vz) >= need) break;
         t = Math.min(tMax, t + 0.1);
         if (i > 5) {
-          if (b.y > NET_Y) ty = Math.max(1.8, ty - 0.5);
-          else ty = Math.min(42.2, ty + 0.5);
+          if (toFar) ty = Math.min(42.2, ty + 0.5);
+          else ty = Math.max(1.8, ty - 0.5);
         }
       }
     }
@@ -2376,7 +2382,7 @@ export class Game {
   }
 
   runAI(p, dt) {
-    const d = DIFF[this.demo ? "normal" : this.diff];
+    const d = this.demo ? DIFF.normal : this.isCpuSide(p) ? DIFF[this.diff] : PARTNER_AI;
     const serveReturn = this.returningServe(p);
     const atK = Math.abs(p.y - (p.side === "near" ? 15 : 29)) < 3.2;
     const base = p.baseSpeed || 9.2;
@@ -2395,6 +2401,8 @@ export class Game {
           const tx = p.side === "far" ? (even ? 5 : 15) : even ? 15 : 5;
           const ty = p.side === "far" ? 40.6 : 3.2;
           this.moveTo(p, tx, ty, dt);
+        } else if (p.side === this.match.server) {
+          this.moveTo(p, p.x < 10 ? 4.8 : 15.2, p.side === "near" ? -0.8 : CL + 0.8, dt);
         } else {
           this.moveTo(p, p.x < 10 ? 5 : 15, kitchenSafeY(p.side), dt);
         }
@@ -2407,6 +2415,9 @@ export class Game {
       return;
     }
     const outY = kitchenSafeY(p.side);
+    // Doubles receivers close in after the return; servers (and singles) wait for both bounces.
+    const holdBack = !this.twoBounceDone() && (!this.isDoubles() || p.side === this.match.server);
+    const backY = p.side === "near" ? 5.5 : 38.5;
     if (this.phase !== "rally" || !this.ball.live) {
       const homeY = this.twoBounceDone() ? this.aiHomeY(p, outY) : p.side === "near" ? 4 : 40;
       this.moveTo(p, 10, homeY, dt);
@@ -2421,20 +2432,16 @@ export class Game {
       p.aiOffY = serveReturn ? 0 : rand(-d.chase * 0.35, d.chase * 0.3);
       p.aiWhiff = serveReturn ? false : Math.random() < (d.miss || 0);
       p.aiChaseX = null;
+      p.aiMine = this.claimsBall(p, land);
     }
     if (this.time - p.lastVolley < 0.55) {
       this.moveTo(p, p.x, outY, dt);
       return;
     }
     if (incoming) {
-      if (this.isDoubles()) {
-        const mates = this.allPlayers().filter((o) => o.side === p.side);
-        const myD = dist(p.x, p.y, land.x, land.y);
-        const closest = mates.every((o) => o === p || dist(o.x, o.y, land.x, land.y) >= myD - 0.35);
-        if (!closest) {
-          this.moveTo(p, p.x < 10 ? 5 : 15, this.twoBounceDone() ? outY : p.side === "near" ? 5.5 : 38.5, dt);
-          return;
-        }
+      if (!p.aiMine) {
+        this.moveTo(p, this.laneX(p), holdBack ? backY : outY, dt);
+        return;
       }
       const bouncedHere = this.ball.lastBounceSide === p.side;
       let ty;
@@ -2476,10 +2483,29 @@ export class Game {
     } else {
       p.aiChaseX = null;
       p.aiTrackHit = null;
-      const homeY = this.twoBounceDone() ? this.aiHomeY(p, outY) : p.side === "near" ? 5.5 : 38.5;
-      const homeX = this.isDoubles() ? (p.x < 10 ? 5 : 15) : clamp(lerp(p.x, this.ball.x, 0.18), 3, 17);
+      const homeY = holdBack ? backY : this.aiHomeY(p, outY);
+      const homeX = this.isDoubles() ? this.laneX(p) : clamp(lerp(p.x, this.ball.x, 0.18), 3, 17);
       this.moveTo(p, homeX, homeY, dt);
     }
+  }
+
+  // Each incoming ball is claimed once, when it is struck, so a partner never runs across and then leaves it.
+  // Your own half is yours; cross over only when your partner is clearly further from it.
+  claimsBall(p, land) {
+    if (!this.isDoubles()) return true;
+    if (this.returningServe(p)) return p === this.receiverPlayer();
+    const mate = this.allPlayers().find((o) => o.side === p.side && o !== p);
+    const myD = dist(p.x, p.y, land.x, land.y);
+    const mateD = dist(mate.x, mate.y, land.x, land.y);
+    const myHalf = land.x < 10 === (this.laneX(p) === 5);
+    return myHalf ? myD <= mateD + 3 : myD < mateD - 3;
+  }
+
+  // Partners hold opposite halves: whoever is further left takes the left lane.
+  laneX(p) {
+    const mate = this.allPlayers().find((o) => o.side === p.side && o !== p);
+    if (!mate || Math.abs(mate.x - p.x) < 0.01) return p.x < 10 ? 5 : 15;
+    return p.x < mate.x ? 5 : 15;
   }
 
   chooseAIShot(p) {
@@ -2579,6 +2605,14 @@ export class Game {
         const xCross = x0 + b.vx * dtN;
         const nh = netHeightAt(xCross);
         if (zCross < nh - 0.05) {
+          // Into the mesh: it drops back on the hitter's side and settles there instead of freezing mid-air.
+          const back = y0 < NET_Y ? -1 : 1;
+          b.x = xCross;
+          b.y = NET_Y + back * 0.2;
+          b.z = Math.max(0.15, zCross);
+          b.vx *= 0.25;
+          b.vy = back * (0.8 + Math.abs(b.vy) * 0.08);
+          b.vz = Math.min(b.vz, 0) * 0.2;
           this.sfx.net();
           this.flash("NET", 0.9);
           this.endRally("net", b.lastHit);
@@ -2633,6 +2667,35 @@ export class Game {
       const side = b.y < NET_Y ? "near" : "far";
       this.endRally("double", side);
     }
+  }
+
+  // A dead ball keeps falling and bouncing out with no rules applied, so a point never ends on a frozen ball.
+  settleBall(dt) {
+    const b = this.ball;
+    if (b.held || b.live || b.z < 0) return;
+    if (b.z === 0 && b.vz === 0 && Math.hypot(b.vx, b.vy) < 0.05) return;
+    const y0 = b.y;
+    b.vz -= G * dt;
+    b.x += b.vx * dt;
+    b.y += b.vy * dt;
+    b.z += b.vz * dt;
+    if ((y0 - NET_Y) * (b.y - NET_Y) < 0 && b.z < netHeightAt(clamp(b.x, 0, CW))) {
+      b.y = y0;
+      b.vy *= -0.2;
+    }
+    if (b.z <= 0) {
+      b.z = 0;
+      b.vz = Math.abs(b.vz) * 0.5;
+      if (b.vz < 1.2) b.vz = 0;
+      b.vx *= 0.7;
+      b.vy *= 0.7;
+      if (b.vz === 0) {
+        b.vx *= 0.9;
+        b.vy *= 0.9;
+      }
+    }
+    b.trail.push({ x: b.x, y: b.y, z: b.z });
+    if (b.trail.length > 10) b.trail.shift();
   }
 
   onBounce() {
@@ -3063,6 +3126,7 @@ export class Game {
     }
 
     if (this.phase === "dead") {
+      this.settleBall(dt);
       this.deadT -= dt;
       if (this.deadT <= 0) this.resetPoint();
       return;
